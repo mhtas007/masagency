@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the MAS Agency system (team member).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["Super Admin", "Manager", "Marketing Specialist", "Designer", "Accountant"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "A client of MAS Agency.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "notes": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "company"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A project for a client.",
+      "type": "object",
+      "properties": {
+        "client_id": { "type": "string" },
+        "project_name": { "type": "string" },
+        "service_type": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "In Progress", "Review", "Completed"] },
+        "deadline": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client_id", "project_name", "status"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "An invoice for a client.",
+      "type": "object",
+      "properties": {
+        "client_id": { "type": "string" },
+        "price_iqd": { "type": "number" },
+        "price_usd": { "type": "number" },
+        "exchange_rate": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Unpaid", "Overdue"] },
+        "payment_method": { "type": "string" },
+        "items": { "type": "array" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client_id", "price_iqd", "price_usd", "status"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "A digital marketing campaign.",
+      "type": "object",
+      "properties": {
+        "client_id": { "type": "string" },
+        "campaign_name": { "type": "string" },
+        "platform": { "type": "string" },
+        "budget": { "type": "number" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client_id", "campaign_name", "platform", "budget"]
+    },
+    "TechService": {
+      "title": "TechService",
+      "description": "A MAS tech service like POS or Website.",
+      "type": "object",
+      "properties": {
+        "client_id": { "type": "string" },
+        "service_name": { "type": "string" },
+        "type": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client_id", "service_name", "type", "price"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction.",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["Income", "Expense"] },
+        "date": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["description", "amount", "type", "date"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "A potential client.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "status": { "type": "string", "enum": ["New", "Contacted", "Qualified", "Lost", "Converted"] },
+        "notes": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task for the team.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["To Do", "In Progress", "Done"] },
+        "deadline": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A system notification.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "type", "read", "created_at"]
+    },
+    "SocialContract": {
+      "title": "SocialContract",
+      "description": "A social media contract.",
+      "type": "object",
+      "properties": {
+        "client_id": { "type": "string" },
+        "contract_name": { "type": "string" },
+        "duration_months": { "type": "number" },
+        "monthly_fee": { "type": "number" },
+        "paid_months": { "type": "number" },
+        "start_date": { "type": "string" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client_id", "contract_name", "duration_months", "monthly_fee", "paid_months", "start_date", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Stores client records."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores project records."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Stores invoice records."
+    },
+    "/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/Campaign" },
+      "description": "Stores marketing campaigns."
+    },
+    "/tech_services/{serviceId}": {
+      "schema": { "$ref": "#/entities/TechService" },
+      "description": "Stores MAS tech services."
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Stores financial transactions."
+    },
+    "/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Stores potential clients."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Stores team tasks."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Stores system notifications."
+    },
+    "/social_contracts/{contractId}": {
+      "schema": { "$ref": "#/entities/SocialContract" },
+      "description": "Stores social media contracts."
+    }
+  }
+}

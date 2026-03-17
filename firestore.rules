@@ -1,0 +1,219 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isAuthenticated() &&
+        ((userDoc != null && userDoc.data.role == 'Super Admin') ||
+          request.auth.token.email == "mhtasahmad@gmail.com" ||
+          request.auth.token.email == "maskurdish10@gmail.com");
+    }
+
+    function isManagerOrAdmin() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isAuthenticated() &&
+        ((userDoc != null && userDoc.data.role in ['Super Admin', 'Manager']) ||
+          request.auth.token.email == "mhtasahmad@gmail.com" ||
+          request.auth.token.email == "maskurdish10@gmail.com");
+    }
+
+    function isFinanceRole() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isAuthenticated() &&
+        ((userDoc != null && userDoc.data.role in ['Super Admin', 'Manager', 'Accountant']) ||
+          request.auth.token.email == "mhtasahmad@gmail.com" ||
+          request.auth.token.email == "maskurdish10@gmail.com");
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['Super Admin', 'Manager', 'Marketing Specialist', 'Designer', 'Accountant'];
+    }
+
+    function isValidClient(data) {
+      return data.keys().hasAll(['name', 'company']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.company is string && data.company.size() > 0 && data.company.size() < 100 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() < 100)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() < 2000));
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['client_id', 'project_name', 'status']) &&
+             data.client_id is string && data.client_id.size() > 0 &&
+             data.project_name is string && data.project_name.size() > 0 && data.project_name.size() < 200 &&
+             (!('service_type' in data) || (data.service_type is string && data.service_type.size() < 100)) &&
+             data.status in ['Pending', 'In Progress', 'Review', 'Completed'] &&
+             (!('deadline' in data) || data.deadline is string);
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll(['client_id', 'price_iqd', 'price_usd', 'status']) &&
+             data.client_id is string && data.client_id.size() > 0 &&
+             data.price_iqd is number && data.price_iqd >= 0 &&
+             data.price_usd is number && data.price_usd >= 0 &&
+             data.status in ['Paid', 'Unpaid', 'Overdue'] &&
+             (!('payment_method' in data) || (data.payment_method is string && data.payment_method.size() < 100));
+    }
+
+    function isValidCampaign(data) {
+      return data.keys().hasAll(['client_id', 'campaign_name', 'platform', 'budget']) &&
+             data.client_id is string && data.client_id.size() > 0 &&
+             data.campaign_name is string && data.campaign_name.size() > 0 && data.campaign_name.size() < 200 &&
+             data.platform is string && data.platform.size() > 0 && data.platform.size() < 100 &&
+             data.budget is number && data.budget >= 0;
+    }
+
+    function isValidTechService(data) {
+      return data.keys().hasAll(['client_id', 'service_name', 'type', 'price']) &&
+             data.client_id is string && data.client_id.size() > 0 &&
+             data.service_name is string && data.service_name.size() > 0 && data.service_name.size() < 200 &&
+             data.type is string && data.type.size() > 0 && data.type.size() < 100 &&
+             data.price is number && data.price >= 0;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['description', 'amount', 'type', 'date']) &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 500 &&
+             data.amount is number && data.amount >= 0 &&
+             data.type in ['Income', 'Expense'] &&
+             data.date is string && data.date.size() > 0 && data.date.size() < 50;
+    }
+
+    function isValidSocialContract(data) {
+      return data.keys().hasAll(['client_id', 'contract_name', 'duration_months', 'monthly_fee', 'paid_months', 'start_date', 'status']) &&
+             data.client_id is string && data.client_id.size() > 0 &&
+             data.contract_name is string && data.contract_name.size() > 0 && data.contract_name.size() < 200 &&
+             data.duration_months is number && data.duration_months > 0 &&
+             data.monthly_fee is number && data.monthly_fee >= 0 &&
+             data.paid_months is number && data.paid_months >= 0 &&
+             data.start_date is string && data.start_date.size() > 0 &&
+             data.status in ['Active', 'Completed', 'Cancelled'];
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['title', 'status']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.status in ['To Do', 'In Progress', 'Done'] &&
+             (!('description' in data) || (data.description is string && data.description.size() < 2000)) &&
+             (!('assigned_to' in data) || (data.assigned_to is string)) &&
+             (!('deadline' in data) || (data.deadline is string));
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['title', 'message', 'type', 'created_at', 'read']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 1000 &&
+             data.type in ['success', 'warning', 'info', 'error', 'client', 'project', 'invoice', 'task', 'lead'] &&
+             data.created_at is string &&
+             data.read is bool;
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['name', 'status']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.status in ['New', 'Contacted', 'Qualified', 'Lost', 'Converted'] &&
+             (!('company' in data) || (data.company is string && data.company.size() < 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() < 100)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() < 2000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isAdmin() || isOwner(userId));
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role));
+      allow delete: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidClient(request.resource.data);
+      allow update: if isAuthenticated() && isValidClient(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidProject(request.resource.data);
+      allow update: if isAuthenticated() && isValidProject(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidInvoice(request.resource.data);
+      allow update: if isAuthenticated() && isValidInvoice(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCampaign(request.resource.data);
+      allow update: if isAuthenticated() && isValidCampaign(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /tech_services/{serviceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTechService(request.resource.data);
+      allow update: if isAuthenticated() && isValidTechService(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow delete: if isAdmin();
+    }
+    match /social_contracts/{contractId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidSocialContract(request.resource.data);
+      allow update: if isAuthenticated() && isValidSocialContract(request.resource.data);
+      allow delete: if isAdmin();
+    }
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if isAuthenticated() && isValidTask(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
+      allow update: if isAuthenticated() && isValidNotification(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /leads/{leadId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidLead(request.resource.data);
+      allow update: if isAuthenticated() && isValidLead(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}
