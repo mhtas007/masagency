@@ -2,12 +2,13 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "A user of the MAS Agency system (team member).",
+      "description": "A user of the MAS Agency system (team member or client).",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["Super Admin", "Manager", "Marketing Specialist", "Designer", "Accountant"] },
+        "role": { "type": "string", "enum": ["Super Admin", "Manager", "Marketing Specialist", "Designer", "Accountant", "Client"] },
+        "client_id": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email", "role"]
@@ -22,6 +23,7 @@
         "phone": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "notes": { "type": "string" },
+        "has_portal": { "type": "boolean" },
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "company"]
@@ -152,6 +154,21 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["client_id", "contract_name", "duration_months", "monthly_fee", "paid_months", "start_date", "status"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "A log of user activity.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "user_email": { "type": "string" },
+        "action": { "type": "string" },
+        "entity_type": { "type": "string" },
+        "entity_id": { "type": "string" },
+        "details": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "user_email", "action", "entity_type", "entity_id", "details", "created_at"]
     }
   },
   "firestore": {
@@ -198,6 +215,10 @@
     "/social_contracts/{contractId}": {
       "schema": { "$ref": "#/entities/SocialContract" },
       "description": "Stores social media contracts."
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Stores user activity logs."
     }
   }
 }

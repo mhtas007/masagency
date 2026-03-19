@@ -1,268 +1,112 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Search, Trash2, Edit, Calendar, FolderPlus, X } from 'lucide-react';
-import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
-import { addNotification } from '../utils/notifications';
+import { Bell, CheckCircle, AlertTriangle, Info, XCircle, Users, Briefcase, FileText, CheckSquare, Target } from 'lucide-react';
 
-export default function Projects() {
-  const [projects, setProjects] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '' });
+import { useAuth } from '../contexts/AuthContext';
+
+export default function Notifications() {
+  const { role } = useAuth();
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
-      setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'projects');
-    });
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
-      setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'clients');
-    });
-    return () => { unsubProjects(); unsubClients(); };
-  }, []);
+    if (role === 'Client') return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingId) {
-        await updateDoc(doc(db, 'projects', editingId), {
-          ...formData,
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        await addDoc(collection(db, 'projects'), {
-          ...formData,
-          created_at: new Date().toISOString()
-        });
-        addNotification('پڕۆژەی نوێ', `پڕۆژەی "${formData.project_name}" زیادکرا`, 'project');
-      }
-      closeModal();
-    } catch (error) {
-      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'projects');
+    const q = query(collection(db, 'notifications'), orderBy('created_at', 'desc'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsub();
+  }, [role]);
+
+  const markAllAsRead = async () => {
+    const unreadNotes = notifications.filter(n => !n.read);
+    if (unreadNotes.length === 0) return;
+    
+    const batch = writeBatch(db);
+    unreadNotes.forEach(note => {
+      const noteRef = doc(db, 'notifications', note.id);
+      batch.update(noteRef, { read: true });
+    });
+    await batch.commit();
+  };
+
+  const markAsRead = async (id: string, read: boolean) => {
+    if (read) return;
+    await updateDoc(doc(db, 'notifications', id), { read: true });
+  };
+
+  const getIcon = (type: string) => {
+    switch(type) {
+      case 'success': return <CheckCircle className="w-6 h-6 text-green-500" />;
+      case 'warning': return <AlertTriangle className="w-6 h-6 text-yellow-500" />;
+      case 'error': return <XCircle className="w-6 h-6 text-red-500" />;
+      case 'info': return <Info className="w-6 h-6 text-blue-500" />;
+      case 'client': return <Users className="w-6 h-6 text-indigo-500" />;
+      case 'project': return <Briefcase className="w-6 h-6 text-purple-500" />;
+      case 'invoice': return <FileText className="w-6 h-6 text-emerald-500" />;
+      case 'task': return <CheckSquare className="w-6 h-6 text-orange-500" />;
+      case 'lead': return <Target className="w-6 h-6 text-rose-500" />;
+      default: return <Bell className="w-6 h-6 text-gray-500" />;
     }
   };
 
-  const handleEdit = (project: any) => {
-    setFormData({
-      client_id: project.client_id || '',
-      project_name: project.project_name || '',
-      service_type: project.service_type || '',
-      status: project.status || 'Pending',
-      deadline: project.deadline || ''
-    });
-    setEditingId(project.id);
-    setShowModal(true);
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return new Intl.DateTimeFormat('ku-IQ', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    }).format(date);
   };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingId(null);
-    setFormData({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '' });
-  };
-
-  const confirmDelete = async () => {
-    if (showDeleteModal) {
-      try {
-        await deleteDoc(doc(db, 'projects', showDeleteModal));
-        setShowDeleteModal(null);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `projects/${showDeleteModal}`);
-      }
-    }
-  };
-
-  const getClientName = (id: string) => {
-    return clients.find(c => c.id === id)?.name || 'نەناسراو';
-  };
-
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'In Progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Review': return 'bg-gray-200 text-gray-900 border-gray-300';
-      case 'Completed': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const filteredProjects = projects.filter(project => 
-    project.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getClientName(project.client_id).toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">پرۆژەکان</h1>
-          <p className="text-gray-500 text-sm mt-1">بەڕێوەبردن و چاودێریکردنی پرۆژەکانی ئەجێنسی</p>
-        </div>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">ئاگادارکردنەوەکان</h1>
         <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
+          onClick={markAllAsRead}
+          className="text-sm text-gray-900 font-medium hover:text-black bg-gray-100 px-4 py-2 rounded-xl"
         >
-          <FolderPlus className="w-5 h-5" />
-          زیادکردنی پرۆژە
+          خوێندنەوەی هەمووی
         </button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 flex gap-4 bg-gray-50/50">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="گەڕان بۆ پرۆژە یان مشتەری..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white shadow-sm transition-shadow"
-            />
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-right">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">ناوی پرۆژە</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">مشتەری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">جۆری خزمەتگوزاری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">وادە</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredProjects.map((project) => (
-                <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{project.project_name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{getClientName(project.client_id)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{project.service_type}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(project.status)}`}>
-                      {project.status === 'Pending' ? 'چاوەڕێکراو' : 
-                       project.status === 'In Progress' ? 'لە کارکردندایە' : 
-                       project.status === 'Review' ? 'پێداچوونەوە' : 
-                       project.status === 'Completed' ? 'تەواوکراو' : project.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2" dir="ltr">
-                      {project.deadline && <Calendar className="w-4 h-4 text-gray-400" />}
-                      <span>{project.deadline || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(project)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(project.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredProjects.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-medium text-gray-900">هیچ پرۆژەیەک نەدۆزرایەوە</p>
-                      <p className="text-sm text-gray-500 mt-1">وشەیەکی تر تاقی بکەرەوە یان پرۆژەی نوێ زیاد بکە.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="divide-y divide-gray-100">
+          {notifications.map((note) => (
+            <div 
+              key={note.id} 
+              onClick={() => markAsRead(note.id, note.read)}
+              className={`p-4 hover:bg-gray-50 transition-colors flex gap-4 items-start cursor-pointer ${!note.read ? 'bg-blue-50/30' : ''}`}
+            >
+              <div className="mt-1">
+                {getIcon(note.type)}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <h3 className={`text-sm ${!note.read ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+                    {note.title}
+                  </h3>
+                  {!note.read && <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>}
+                </div>
+                <p className="text-sm text-gray-600 mt-1">{note.message}</p>
+                <p className="text-xs text-gray-400 mt-2" dir="ltr">{formatDate(note.created_at)}</p>
+              </div>
+            </div>
+          ))}
+          {notifications.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              <Bell className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+              <p>هیچ ئاگادارکردنەوەیەک نییە</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Add/Edit Project Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingId ? 'دەستکاریکردنی پرۆژە' : 'زیادکردنی پرۆژەی نوێ'}
-              </h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ناوی پرۆژە <span className="text-red-500">*</span></label>
-                  <input required type="text" value={formData.project_name} onChange={e => setFormData({...formData, project_name: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" placeholder="ناوی پرۆژە بنووسە..." />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">مشتەری <span className="text-red-500">*</span></label>
-                  <select required value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
-                    <option value="">هەڵبژاردنی مشتەری...</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} - {c.company}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">جۆری خزمەتگوزاری</label>
-                  <input type="text" value={formData.service_type} onChange={e => setFormData({...formData, service_type: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" placeholder="نموونە: وێبسایت، سۆشیاڵ میدیا..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">دۆخ</label>
-                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
-                    <option value="Pending">چاوەڕێکراو (Pending)</option>
-                    <option value="In Progress">لە کارکردندایە (In Progress)</option>
-                    <option value="Review">پێداچوونەوە (Review)</option>
-                    <option value="Completed">تەواوکراو (Completed)</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">وادە (Deadline)</label>
-                  <input type="date" value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" />
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={closeModal} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors">پاشگەزبوونەوە</button>
-                <button type="submit" className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium transition-colors shadow-sm hover:shadow-md">
-                  {editingId ? 'نوێکردنەوە' : 'پاشەکەوتکردن'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-5">
-              <Trash2 className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">سڕینەوەی پرۆژە</h3>
-            <p className="text-gray-500 mb-8">ئایا دڵنیایت لە سڕینەوەی ئەم پرۆژەیە؟ ئەم کردارە ناگەڕێتەوە.</p>
-            <div className="flex justify-center gap-3">
-              <button onClick={() => setShowDeleteModal(null)} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors w-full">پاشگەزبوونەوە</button>
-              <button onClick={confirmDelete} className="px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors shadow-sm hover:shadow-md w-full">سڕینەوە</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

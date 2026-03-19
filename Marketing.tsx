@@ -1,166 +1,117 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
-import { db } from '../firebase';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Briefcase, 
-  FileText, 
-  Megaphone, 
-  BarChart3, 
-  Settings, 
-  LogOut,
-  MonitorSmartphone,
-  CreditCard,
-  Bell,
-  Menu,
-  X,
-  CheckSquare,
-  Target,
-  Shield
-} from 'lucide-react';
-import { cn } from '../lib/utils';
+import React, { useState } from 'react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { db, secondaryAuth } from '../firebase';
+import { X, Key } from 'lucide-react';
+import { addNotification } from '../utils/notifications';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
-const navigation = [
-  { name: 'داشبۆرد', href: '/', icon: LayoutDashboard },
-  { name: 'مشتەرییەکان (CRM)', href: '/clients', icon: Users },
-  { name: 'پڕۆژەکان', href: '/projects', icon: Briefcase },
-  { name: 'فڕۆشتن و فاتورە', href: '/invoices', icon: FileText },
-  { name: 'مارکێتینگی دیجیتاڵی', href: '/marketing', icon: Megaphone },
-  { name: 'راپۆرت و شیکاری', href: '/reports', icon: BarChart3 },
-  { name: 'تەکنەلۆجیای MAS', href: '/mas-tech', icon: MonitorSmartphone },
-  { name: 'سیستەمی دارایی', href: '/finance', icon: CreditCard },
-  { name: 'ئەرکەکان (Tasks)', href: '/tasks', icon: CheckSquare },
-  { name: 'چاوەڕوانکراوەکان (Leads)', href: '/leads', icon: Target },
-  { name: 'تیم و دەسەڵاتەکان', href: '/team', icon: Shield },
-  { name: 'ئاگادارکردنەوەکان', href: '/notifications', icon: Bell },
-  { name: 'ڕێکخستنەکان', href: '/settings', icon: Settings },
-];
+interface CreatePortalModalProps {
+  client: any;
+  onClose: () => void;
+}
 
-export default function Layout() {
-  const { user, role, logout } = useAuth();
-  const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+export default function CreatePortalModal({ client, onClose }: CreatePortalModalProps) {
+  const [email, setEmail] = useState(client.email || '');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'notifications'), where('read', '==', false));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setUnreadCount(snapshot.docs.length);
-    });
-    return () => unsub();
-  }, [user]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+    try {
+      // Create user in Firebase Auth using secondary app to avoid signing out current user
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const newUser = userCredential.user;
 
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
+      // Add user to users collection
+      await setDoc(doc(db, 'users', newUser.uid), {
+        name: client.name,
+        email: email,
+        role: 'Client',
+        client_id: client.id,
+        created_at: new Date().toISOString()
+      });
+
+      // Update client to indicate they have a portal account
+      await updateDoc(doc(db, 'clients', client.id), {
+        has_portal: true,
+        updated_at: new Date().toISOString()
+      });
+
+      addNotification('هەژمار دروستکرا', `هەژماری پۆرتاڵ بۆ ${client.name} دروستکرا`, 'success');
+      onClose();
+    } catch (err: any) {
+      console.error("Error creating portal account:", err);
+      setError(err.message || 'هەڵەیەک ڕوویدا لە کاتی دروستکردنی هەژمار');
+      if (err.code !== 'auth/email-already-in-use') {
+        handleFirestoreError(err, OperationType.CREATE, 'users');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex" dir="rtl">
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
-          onClick={closeMobileMenu}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={cn(
-        "fixed inset-y-0 right-0 z-50 w-64 bg-white border-l border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0",
-        isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-      )}>
-        <div className="h-16 flex items-center justify-between border-b border-gray-200 px-4">
-          <img src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" alt="MAS Agency" className="h-10 w-auto" referrerPolicy="no-referrer" />
-          <button 
-            onClick={closeMobileMenu}
-            className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
-          >
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Key className="w-5 h-5 text-primary" />
+            دروستکردنی هەژماری پۆرتاڵ
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
             <X className="w-5 h-5" />
           </button>
         </div>
         
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              onClick={closeMobileMenu}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors',
-                  isActive
-                    ? 'bg-gray-100 text-black'
-                    : 'text-gray-700 hover:bg-gray-100'
-                )
-              }
-            >
-              <item.icon className="w-5 h-5 ml-3 flex-shrink-0" />
-              {item.name}
-            </NavLink>
-          ))}
-        </div>
-
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center mb-4">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-black font-bold">
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">
+              {error}
             </div>
-            <div className="mr-3 overflow-hidden">
-              <p className="text-sm font-medium text-gray-900 truncate" dir="ltr">{user?.email?.split('@')[0]}</p>
-              <p className="text-xs text-gray-500 truncate">{role}</p>
-            </div>
+          )}
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">ئیمەیڵ</label>
+            <input 
+              required 
+              type="email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              className="w-full p-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-shadow" 
+              dir="ltr" 
+              placeholder="client@example.com" 
+            />
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-4 h-4 ml-2" />
-            چوونە دەرەوە
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 lg:mr-64 flex flex-col min-h-screen w-full">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
-            >
-              <Menu className="w-6 h-6" />
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">پاسۆرد</label>
+            <input 
+              required 
+              type="password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              className="w-full p-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-shadow" 
+              dir="ltr" 
+              minLength={6}
+              placeholder="لانی کەم ٦ پیت/ژمارە" 
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors">
+              پاشگەزبوونەوە
             </button>
-            <div className="hidden sm:flex items-center gap-3">
-              <img src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" alt="MAS Agency" className="h-8 w-auto" referrerPolicy="no-referrer" />
-              <h2 className="text-lg font-semibold text-gray-800">سیستەمی بەڕێوەبردن</h2>
-            </div>
+            <button type="submit" disabled={loading} className="px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 font-medium transition-colors shadow-sm hover:shadow-md disabled:opacity-50">
+              {loading ? 'چاوەڕێ بکە...' : 'دروستکردن'}
+            </button>
           </div>
-          <div className="flex items-center gap-4">
-            <Link to="/notifications" className="relative p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-              )}
-            </Link>
-          </div>
-        </header>
-        
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto w-full overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <Outlet />
-          </div>
-        </main>
+        </form>
       </div>
     </div>
   );
 }
-

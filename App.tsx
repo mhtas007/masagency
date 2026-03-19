@@ -1,0 +1,20 @@
+{
+  "name": "MAS Agency",
+  "short_name": "MAS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

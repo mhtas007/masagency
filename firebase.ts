@@ -1,90 +1,73 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Clients from './pages/Clients';
+import Projects from './pages/Projects';
+import Invoices from './pages/Invoices';
+import Marketing from './pages/Marketing';
+import Reports from './pages/Reports';
+import MasTech from './pages/MasTech';
+import Finance from './pages/Finance';
+import Notifications from './pages/Notifications';
+import Settings from './pages/Settings';
+import Tasks from './pages/Tasks';
+import Leads from './pages/Leads';
+import Team from './pages/Team';
+import ClientPortal from './pages/ClientPortal';
+import { ThemeProvider } from './contexts/ThemeContext';
+import SplashScreen from './components/SplashScreen';
 
-interface AuthContextType {
-  user: User | null;
-  role: string | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
-  return context;
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <div className="min-h-screen flex items-center justify-center">چاوەڕێ بکە...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  
+  return <>{children}</>;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const DashboardRouter = () => {
+  const { role } = useAuth();
+  if (role === 'Client') {
+    return <ClientPortal />;
+  }
+  return <Dashboard />;
+};
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-            setRole(userDoc.data().role);
-          } else {
-            // Create default user profile if it doesn't exist
-            // Defaulting to 'Super Admin' for the specific first user email
-            const isFirstUser = currentUser.email === 'maskurdish10@gmail.com';
-            const defaultRole = isFirstUser ? 'Super Admin' : 'Marketing Specialist';
-            
-            try {
-              await setDoc(doc(db, 'users', currentUser.uid), {
-                name: currentUser.displayName || currentUser.email?.split('@')[0] || 'New User',
-                email: currentUser.email,
-                role: defaultRole,
-                created_at: new Date().toISOString()
-              });
-              setRole(defaultRole);
-            } catch (error) {
-              handleFirestoreError(error, OperationType.CREATE, `users/${currentUser.uid}`);
-            }
-          }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
-        }
-      } else {
-        setRole(null);
-      }
-      setLoading(false);
-    });
+export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
 
-    return () => unsubscribe();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-      throw error;
-    }
-  };
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
-      {!loading && children}
-    </AuthContext.Provider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route index element={<DashboardRouter />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="invoices" element={<Invoices />} />
+              <Route path="marketing" element={<Marketing />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="mas-tech" element={<MasTech />} />
+              <Route path="finance" element={<Finance />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="tasks" element={<Tasks />} />
+              <Route path="leads" element={<Leads />} />
+              <Route path="team" element={<Team />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
-};
-
+}

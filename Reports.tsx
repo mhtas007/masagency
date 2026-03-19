@@ -1,80 +1,52 @@
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 
-export default function Login() {
-  const { login, user } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
+  useEffect(() => {
+    // Show splash screen for 2.5 seconds
+    const timer = setTimeout(() => {
+      setIsFadingOut(true);
+      // Wait for fade out animation to complete before unmounting
+      setTimeout(() => {
+        onFinish();
+      }, 500);
+    }, 2500);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await login(email, password);
-    } catch (err: any) {
-      setError('ئیمەیڵ یان وشەی نهێنی هەڵەیە، تکایە دڵنیابەرەوە.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => clearTimeout(timer);
+  }, [onFinish]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="mb-8 text-center flex flex-col items-center">
-          <img src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" alt="MAS Agency" className="h-24 w-auto mb-4" referrerPolicy="no-referrer" />
-          <p className="text-gray-500">سیستەمی بەڕێوەبردنی ئەجێنسی</p>
-        </div>
+    <div 
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-900 transition-opacity duration-500 ${
+        isFadingOut ? 'opacity-0' : 'opacity-100'
+      }`}
+      dir="rtl"
+    >
+      <div className="relative flex flex-col items-center animate-pulse-slow">
+        {/* Glow effect behind logo */}
+        <div className="absolute inset-0 bg-white/10 blur-3xl rounded-full transform scale-150"></div>
         
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ئیمەیڵ</label>
-            <input 
-              type="email" 
-              required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900" 
-              dir="ltr"
-              placeholder="admin@masagency.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">وشەی نهێنی</label>
-            <input 
-              type="password" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900" 
-              dir="ltr"
-              placeholder="••••••••"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-black transition-colors shadow-sm disabled:opacity-70"
-          >
-            {loading ? 'چاوەڕێ بکە...' : 'چوونە ژوورەوە'}
-          </button>
-        </form>
+        <img 
+          src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" 
+          alt="MAS Agency" 
+          className="w-40 h-auto relative z-10 mb-6 drop-shadow-2xl"
+          referrerPolicy="no-referrer"
+        />
+        
+        <h1 className="text-3xl font-bold text-white tracking-tight relative z-10">
+          MAS <span className="text-gray-300">Agency</span>
+        </h1>
+        <p className="text-gray-400 mt-2 text-sm font-medium tracking-wide relative z-10">
+          سیستەمی بەڕێوەبردنی دیجیتاڵی
+        </p>
+        
+        <div className="mt-12 flex space-x-2 space-x-reverse relative z-10">
+          <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        </div>
       </div>
     </div>
   );
 }
-

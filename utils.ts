@@ -1,72 +1,95 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
-interface Props {
-  children?: ReactNode;
+interface AuthContextType {
+  user: User | null;
+  role: string | null;
+  clientId: string | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  return context;
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+            setRole(userDoc.data().role);
+            setClientId(userDoc.data().client_id || null);
+          } else {
+            // Create default user profile if it doesn't exist
+            // Defaulting to 'Super Admin' for the specific first user email
+            const isFirstUser = currentUser.email === 'maskurdish10@gmail.com';
+            const defaultRole = isFirstUser ? 'Super Admin' : 'Marketing Specialist';
+            
+            try {
+              await setDoc(doc(db, 'users', currentUser.uid), {
+                name: currentUser.displayName || currentUser.email?.split('@')[0] || 'New User',
+                email: currentUser.email,
+                role: defaultRole,
+                created_at: new Date().toISOString()
+              });
+              setRole(defaultRole);
+              setClientId(null);
+            } catch (error) {
+              handleFirestoreError(error, OperationType.CREATE, `users/${currentUser.uid}`);
+            }
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
+        }
+      } else {
+        setRole(null);
+        setClientId(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
   };
 
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
-  }
-
-  public render() {
-    if (this.state.hasError) {
-      let errorMessage = "هەڵەیەک ڕوویدا لە کاتی کارکردنی سیستەمەکە.";
-      let errorDetails = "";
-
-      try {
-        if (this.state.error?.message) {
-          const parsedError = JSON.parse(this.state.error.message);
-          if (parsedError.error && parsedError.error.includes("Missing or insufficient permissions")) {
-            errorMessage = "ببورە، تۆ دەسەڵاتی پێویستت نییە بۆ ئەنجامدانی ئەم کردارە.";
-            errorDetails = `کردار: ${parsedError.operationType} | شوێن: ${parsedError.path}`;
-          } else {
-            errorMessage = parsedError.error || errorMessage;
-          }
-        }
-      } catch (e) {
-        errorMessage = this.state.error?.message || errorMessage;
-      }
-
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertTriangle className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">هەڵەیەک ڕوویدا</h1>
-            <p className="text-gray-600 mb-4">{errorMessage}</p>
-            {errorDetails && (
-              <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg mb-6 text-left" dir="ltr">
-                {errorDetails}
-              </p>
-            )}
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-black transition-colors"
-            >
-              نوێکردنەوەی پەڕە
-            </button>
-          </div>
-        </div>
-      );
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+      throw error;
     }
+  };
 
-    return this.props.children;
-  }
-}
+  return (
+    <AuthContext.Provider value={{ user, role, clientId, loading, login, logout }}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+};
+

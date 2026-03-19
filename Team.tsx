@@ -1,119 +1,180 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Search, Trash2, Edit, Monitor, Smartphone, Globe, Code, X } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, X, Target, Phone, Mail, Building2, UserPlus, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
+import { exportToCSV } from '../utils/exportUtils';
+import { logActivity } from '../utils/activityLogger';
+import { useAuth } from '../contexts/AuthContext';
 
-export default function MasTech() {
-  const [services, setServices] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+export default function Leads() {
+  const { user, role } = useAuth();
+  const [leads, setLeads] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress' });
+  const [formData, setFormData] = useState({ name: '', company: '', phone: '', email: '', status: 'New', notes: '' });
 
   useEffect(() => {
-    const unsubServices = onSnapshot(collection(db, 'tech_services'), (snapshot) => {
-      setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    if (role === 'Client') return;
+
+    const unsub = onSnapshot(collection(db, 'leads'), (snapshot) => {
+      setLeads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'tech_services');
+      handleFirestoreError(error, OperationType.LIST, 'leads');
     });
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
-      setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'clients');
-    });
-    return () => { unsubServices(); unsubClients(); };
-  }, []);
+    return () => unsub();
+  }, [role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'tech_services', editingId), {
+        await updateDoc(doc(db, 'leads', editingId), {
           ...formData,
-          price: Number(formData.price),
           updated_at: new Date().toISOString()
         });
+        if (user) {
+          logActivity(user.uid, user.email || '', 'UPDATE', 'lead', editingId, `Updated lead ${formData.name}`);
+        }
       } else {
-        await addDoc(collection(db, 'tech_services'), {
+        const docRef = await addDoc(collection(db, 'leads'), {
           ...formData,
-          price: Number(formData.price),
           created_at: new Date().toISOString()
         });
-        addNotification('خزمەتگوزاری نوێ', `خزمەتگوزاری "${formData.service_name}" زیادکرا`, 'info');
+        addNotification('چاوەڕوانکراوی نوێ', `چاوەڕوانکراوی "${formData.name}" زیادکرا`, 'lead');
+        if (user) {
+          logActivity(user.uid, user.email || '', 'CREATE', 'lead', docRef.id, `Created lead ${formData.name}`);
+        }
       }
       closeModal();
     } catch (error) {
-      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'tech_services');
+      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'leads');
     }
   };
 
-  const handleEdit = (service: any) => {
+  const handleEdit = (lead: any) => {
     setFormData({
-      client_id: service.client_id || '',
-      service_name: service.service_name || '',
-      type: service.type || 'Website',
-      price: service.price || 0,
-      status: service.status || 'In Progress'
+      name: lead.name || '',
+      company: lead.company || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      status: lead.status || 'New',
+      notes: lead.notes || ''
     });
-    setEditingId(service.id);
+    setEditingId(lead.id);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress' });
+    setFormData({ name: '', company: '', phone: '', email: '', status: 'New', notes: '' });
   };
 
   const confirmDelete = async () => {
     if (showDeleteModal) {
       try {
-        await deleteDoc(doc(db, 'tech_services', showDeleteModal));
+        const leadToDelete = leads.find(l => l.id === showDeleteModal);
+        await deleteDoc(doc(db, 'leads', showDeleteModal));
+        if (user) {
+          logActivity(user.uid, user.email || '', 'DELETE', 'lead', showDeleteModal, `Deleted lead ${leadToDelete?.name || 'Unknown'}`);
+        }
         setShowDeleteModal(null);
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `tech_services/${showDeleteModal}`);
+        handleFirestoreError(error, OperationType.DELETE, `leads/${showDeleteModal}`);
       }
     }
   };
 
-  const getClientName = (id: string) => {
-    return clients.find(c => c.id === id)?.name || 'نەناسراو';
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch(type) {
-      case 'Website': return <Globe className="w-5 h-5 text-blue-500" />;
-      case 'Mobile App': return <Smartphone className="w-5 h-5 text-green-500" />;
-      case 'POS System': return <Monitor className="w-5 h-5 text-gray-900" />;
-      case 'Custom Software': return <Code className="w-5 h-5 text-orange-500" />;
-      case 'Digital Menu': return <Smartphone className="w-5 h-5 text-gray-900" />;
-      default: return <Globe className="w-5 h-5 text-gray-500" />;
+  const updateStatus = async (id: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'leads', id), { status: newStatus });
+      const lead = leads.find(l => l.id === id);
+      if (newStatus === 'Converted') {
+        if (lead) {
+          addNotification('سەرکەوتن!', `چاوەڕوانکراو "${lead.name}" بوو بە مشتەری`, 'success');
+        }
+      }
+      if (user && lead) {
+        logActivity(user.uid, user.email || '', 'UPDATE', 'lead', id, `Updated lead status for ${lead.name} to ${newStatus}`);
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `leads/${id}`);
     }
   };
 
-  const filteredServices = services.filter(service => 
-    service.service_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getClientName(service.client_id).toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLeads = leads.filter(l => 
+    l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (l.company && l.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (l.phone && l.phone.includes(searchTerm))
   );
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'New': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Contacted': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'Qualified': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'Lost': return 'bg-red-100 text-red-700 border-red-200';
+      case 'Converted': return 'bg-green-100 text-green-700 border-green-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch(status) {
+      case 'New': return 'نوێ';
+      case 'Contacted': return 'پەیوەندی پێوەکراوە';
+      case 'Qualified': return 'گونجاوە';
+      case 'Lost': return 'لەدەستچوو';
+      case 'Converted': return 'بوو بە مشتەری';
+      default: return status;
+    }
+  };
+
+  const handleExportCSV = () => {
+    const dataToExport = filteredLeads.map(lead => ({
+      'ناو': lead.name,
+      'کۆمپانیا': lead.company || '',
+      'مۆبایل': lead.phone || '',
+      'ئیمەیڵ': lead.email || '',
+      'دۆخ': getStatusText(lead.status),
+      'تێبینی': lead.notes || '',
+      'بەرواری دروستکردن': new Date(lead.created_at).toLocaleDateString('en-GB')
+    }));
+    exportToCSV(dataToExport, 'leads_export');
+    if (user) {
+      logActivity(user.uid, user.email || '', 'EXPORT', 'lead', 'all', 'Exported leads to CSV');
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">تەکنەلۆجیای MAS</h1>
-          <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی خزمەتگوزارییە تەکنەلۆجییەکان</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">چاوەڕوانکراوەکان (Leads)</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">بەڕێوەبردنی ئەو کەسانەی کە هێشتا نەبوونەتە مشتەری</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          خزمەتگوزاری نوێ
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm font-medium"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden sm:inline">هەناردەکردن</span>
+          </button>
+          {role !== 'Client' && (
+            <button 
+              onClick={() => setShowModal(true)}
+              className="bg-gray-900 dark:bg-primary text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black dark:hover:bg-primary/90 transition-all shadow-sm font-medium"
+            >
+              <UserPlus className="w-5 h-5" />
+              زیادکردنی نوێ
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -122,10 +183,10 @@ export default function MasTech() {
             <Search className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
-              placeholder="گەڕان بۆ خزمەتگوزاری یان مشتەری..." 
+              placeholder="گەڕان بۆ ناو، کۆمپانیا، یان تەلەفۆن..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white shadow-sm transition-shadow"
+              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white shadow-sm"
             />
           </div>
         </div>
@@ -134,50 +195,67 @@ export default function MasTech() {
           <table className="w-full text-right">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">ناوی خزمەتگوزاری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">مشتەری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">جۆر</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">نرخ (USD)</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">ناو</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">کۆمپانیا</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">پەیوەندی</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredServices.map((service) => (
-                <tr key={service.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{service.service_name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{getClientName(service.client_id)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 flex items-center gap-2">
-                    {getTypeIcon(service.type)} {service.type}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium" dir="ltr">${service.price?.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${service.status === 'Completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>
-                      {service.status === 'Completed' ? 'تەواوکراو' : 'لە کارکردندایە'}
-                    </span>
+              {filteredLeads.map((lead) => (
+                <tr key={lead.id} className="hover:bg-gray-50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold">
+                        {lead.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{lead.name}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(service)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {lead.company ? (
+                      <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-gray-400" /> {lead.company}</span>
+                    ) : <span className="text-gray-400">-</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 space-y-1">
+                    {lead.phone && <div className="flex items-center gap-1.5" dir="ltr"><Phone className="w-3 h-3 text-gray-400" /> {lead.phone}</div>}
+                    {lead.email && <div className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-gray-400" /> {lead.email}</div>}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <select 
+                      value={lead.status} 
+                      onChange={(e) => updateStatus(lead.id, e.target.value)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-900 ${getStatusColor(lead.status)}`}
+                    >
+                      <option value="New">نوێ</option>
+                      <option value="Contacted">پەیوەندی پێوەکراوە</option>
+                      <option value="Qualified">گونجاوە</option>
+                      <option value="Lost">لەدەستچوو</option>
+                      <option value="Converted">بوو بە مشتەری</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {role !== 'Client' && (
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(lead)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowDeleteModal(lead.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
-              {filteredServices.length === 0 && (
+              {filteredLeads.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-medium text-gray-900">هیچ خزمەتگوزارییەک نەدۆزرایەوە</p>
-                      <p className="text-sm text-gray-500 mt-1">وشەیەکی تر تاقی بکەرەوە یان خزمەتگوزاری نوێ زیاد بکە.</p>
-                    </div>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    <Target className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-lg font-medium text-gray-900">هیچ چاوەڕوانکراوێک نەدۆزرایەوە</p>
                   </td>
                 </tr>
               )}
@@ -186,60 +264,56 @@ export default function MasTech() {
         </div>
       </div>
 
-      {/* Add/Edit Service Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-xl font-bold text-gray-900">
-                {editingId ? 'دەستکاریکردنی خزمەتگوزاری' : 'زیادکردنی خزمەتگوزاری نوێ'}
+                {editingId ? 'دەستکاریکردنی زانیاری' : 'زیادکردنی نوێ'}
               </h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full">
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ناوی خزمەتگوزاری <span className="text-red-500">*</span></label>
-                  <input required type="text" value={formData.service_name} onChange={e => setFormData({...formData, service_name: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" placeholder="ناوی خزمەتگوزاری بنووسە..." />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">مشتەری <span className="text-red-500">*</span></label>
-                  <select required value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
-                    <option value="">هەڵبژاردنی مشتەری...</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} - {c.company}</option>
-                    ))}
-                  </select>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ناوی کەس <span className="text-red-500">*</span></label>
+                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">جۆر</label>
-                  <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
-                    <option value="Website">وێبسایت (Website)</option>
-                    <option value="Mobile App">ئەپڵیکەیشن (Mobile App)</option>
-                    <option value="POS System">سیستەمی کاشێر (POS System)</option>
-                    <option value="Custom Software">سۆفتوێری تایبەت</option>
-                    <option value="Digital Menu">مێنوی دیجیتاڵی (Digital Menu)</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ناوی کۆمپانیا / براند</label>
+                  <input type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">نرخ (USD) <span className="text-red-500">*</span></label>
-                  <input type="number" required value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" dir="ltr" placeholder="0.00" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ژمارە تەلەفۆن</label>
+                  <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" dir="ltr" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ئیمەیڵ</label>
+                  <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" dir="ltr" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">دۆخ</label>
-                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
-                    <option value="In Progress">لە کارکردندایە</option>
-                    <option value="Completed">تەواوکراو</option>
+                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900">
+                    <option value="New">نوێ</option>
+                    <option value="Contacted">پەیوەندی پێوەکراوە</option>
+                    <option value="Qualified">گونجاوە</option>
+                    <option value="Lost">لەدەستچوو</option>
+                    <option value="Converted">بوو بە مشتەری</option>
                   </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">تێبینی</label>
+                  <textarea rows={3} value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900"></textarea>
                 </div>
               </div>
               
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={closeModal} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors">پاشگەزبوونەوە</button>
-                <button type="submit" className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium transition-colors shadow-sm hover:shadow-md">
+              <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-gray-100">
+                <button type="button" onClick={closeModal} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium">پاشگەزبوونەوە</button>
+                <button type="submit" className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium">
                   {editingId ? 'نوێکردنەوە' : 'پاشەکەوتکردن'}
                 </button>
               </div>
@@ -248,18 +322,18 @@ export default function MasTech() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-5">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4 text-red-600">
               <Trash2 className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">سڕینەوەی خزمەتگوزاری</h3>
-            <p className="text-gray-500 mb-8">ئایا دڵنیایت لە سڕینەوەی ئەم خزمەتگوزارییە؟ ئەم کردارە ناگەڕێتەوە.</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">سڕینەوە</h3>
+            <p className="text-gray-500 mb-6">ئایا دڵنیایت لە سڕینەوەی ئەم تۆمارە؟</p>
             <div className="flex justify-center gap-3">
-              <button onClick={() => setShowDeleteModal(null)} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors w-full">پاشگەزبوونەوە</button>
-              <button onClick={confirmDelete} className="px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors shadow-sm hover:shadow-md w-full">سڕینەوە</button>
+              <button onClick={() => setShowDeleteModal(null)} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium w-full">پاشگەزبوونەوە</button>
+              <button onClick={confirmDelete} className="px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium w-full">سڕینەوە</button>
             </div>
           </div>
         </div>
