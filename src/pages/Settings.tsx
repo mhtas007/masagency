@@ -1,10 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Save, User, Lock, Building } from 'lucide-react';
+import { Save, User, Lock, Building, Bell } from 'lucide-react';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default function Settings() {
   const { user, role } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
+  const [saving, setSaving] = useState(false);
+  
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    new_clients: true,
+    financial_updates: true,
+    team_activities: true,
+    messages: true,
+    general_announcements: true
+  });
+
+  useEffect(() => {
+    const fetchPrefs = async () => {
+      if (!user) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && userDoc.data().notificationPreferences) {
+          setNotificationPrefs({
+            ...notificationPrefs,
+            ...userDoc.data().notificationPreferences
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching preferences:", error);
+      }
+    };
+    fetchPrefs();
+  }, [user]);
+
+  const handlePrefToggle = (key: keyof typeof notificationPrefs) => {
+    setNotificationPrefs(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const saveNotificationPrefs = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        notificationPreferences: notificationPrefs
+      });
+      alert('ڕێکخستنەکانی نۆتیفیکەیشن پاشەکەوت کران.');
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      alert('هەڵەیەک ڕوویدا لە پاشەکەوتکردندا.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -27,6 +79,13 @@ export default function Settings() {
             >
               <Lock className="w-5 h-5" />
               ئاسایش
+            </button>
+            <button 
+              onClick={() => setActiveTab('notifications')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'notifications' ? 'bg-gray-100 text-black' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              <Bell className="w-5 h-5" />
+              ئاگادارکردنەوەکان
             </button>
             {role === 'Super Admin' && (
               <button 
@@ -93,6 +152,47 @@ export default function Settings() {
                 <button className="px-6 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium flex items-center gap-2">
                   <Save className="w-4 h-4" />
                   نوێکردنەوەی وشەی نهێنی
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-4">ڕێکخستنی ئاگادارکردنەوەکان</h2>
+              
+              <div className="space-y-4">
+                {[
+                  { id: 'new_clients', title: 'ئاگاداری کڕیارە نوێیەکان', desc: 'کاتێک کڕیارێکی نوێ تۆمار دەکرێت لە سیستم.' },
+                  { id: 'financial_updates', title: 'نوێکارییە داراییەکان', desc: 'کاتێک پارەیەک وەردەگیرێت یان پسوڵەیەک دەبڕدرێت.' },
+                  { id: 'team_activities', title: 'چالاکییەکانی تیم', desc: 'کاتێک کارمەندێکی تر گۆڕانکاری لە داتاکاندا دەکات.' },
+                  { id: 'messages', title: 'نامە و نامەبەری', desc: 'کاتێک کڕیارێک یان سیستمەکە نامەیەکی ناوخۆییت بۆ دەنێرێت.' },
+                  { id: 'general_announcements', title: 'ئاگادارییە گشتییەکان', desc: 'هەواڵ و نوێکارییەکانی خودی سیستمی MAS Agency.' },
+                ].map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                    </div>
+                    <button 
+                      onClick={() => handlePrefToggle(item.id as keyof typeof notificationPrefs)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${notificationPrefs[item.id as keyof typeof notificationPrefs] ? 'bg-blue-600' : 'bg-gray-200'}`}
+                      dir="ltr"
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notificationPrefs[item.id as keyof typeof notificationPrefs] ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button 
+                  onClick={saveNotificationPrefs}
+                  disabled={saving}
+                  className="px-6 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'چاوەڕێ بکە...' : 'پاشەکەوتکردن'}
                 </button>
               </div>
             </div>

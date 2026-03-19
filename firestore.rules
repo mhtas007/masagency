@@ -55,7 +55,9 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
              data.role in ['Super Admin', 'Manager', 'Marketing Specialist', 'Designer', 'Accountant', 'Client'] &&
-             (!('client_id' in data) || (data.client_id is string && data.client_id.size() < 100));
+             (!('client_id' in data) || (data.client_id is string && data.client_id.size() < 100)) &&
+             (!('fcmTokens' in data) || (data.fcmTokens is list)) &&
+             (!('notificationPreferences' in data) || (data.notificationPreferences is map));
     }
 
     function isValidClient(data) {

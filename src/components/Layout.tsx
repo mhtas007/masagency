@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../contexts/ThemeContext';
+import { NotificationPermission } from './NotificationPermission';
 
 const adminNavigation = [
   { name: 'داشبۆرد', href: '/', icon: LayoutDashboard },
@@ -194,6 +195,7 @@ export default function Layout() {
           </div>
         </main>
       </div>
+      <NotificationPermission />
     </div>
   );
 }
