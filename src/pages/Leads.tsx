@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Search, Trash2, Edit, X, Target, Phone, Mail, Building2, UserPlus } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, X, Target, Phone, Mail, Building2, UserPlus, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
+import { exportToCSV } from '../utils/exportUtils';
+import { logActivity } from '../utils/activityLogger';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Leads() {
+  const { user, role } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
@@ -14,13 +18,15 @@ export default function Leads() {
   const [formData, setFormData] = useState({ name: '', company: '', phone: '', email: '', status: 'New', notes: '' });
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const unsub = onSnapshot(collection(db, 'leads'), (snapshot) => {
       setLeads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'leads');
     });
     return () => unsub();
-  }, []);
+  }, [role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,12 +36,18 @@ export default function Leads() {
           ...formData,
           updated_at: new Date().toISOString()
         });
+        if (user) {
+          logActivity(user.uid, user.email || '', 'UPDATE', 'lead', editingId, `Updated lead ${formData.name}`);
+        }
       } else {
-        await addDoc(collection(db, 'leads'), {
+        const docRef = await addDoc(collection(db, 'leads'), {
           ...formData,
           created_at: new Date().toISOString()
         });
         addNotification('چاوەڕوانکراوی نوێ', `چاوەڕوانکراوی "${formData.name}" زیادکرا`, 'lead');
+        if (user) {
+          logActivity(user.uid, user.email || '', 'CREATE', 'lead', docRef.id, `Created lead ${formData.name}`);
+        }
       }
       closeModal();
     } catch (error) {
@@ -65,7 +77,11 @@ export default function Leads() {
   const confirmDelete = async () => {
     if (showDeleteModal) {
       try {
+        const leadToDelete = leads.find(l => l.id === showDeleteModal);
         await deleteDoc(doc(db, 'leads', showDeleteModal));
+        if (user) {
+          logActivity(user.uid, user.email || '', 'DELETE', 'lead', showDeleteModal, `Deleted lead ${leadToDelete?.name || 'Unknown'}`);
+        }
         setShowDeleteModal(null);
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `leads/${showDeleteModal}`);
@@ -76,11 +92,14 @@ export default function Leads() {
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, 'leads', id), { status: newStatus });
+      const lead = leads.find(l => l.id === id);
       if (newStatus === 'Converted') {
-        const lead = leads.find(l => l.id === id);
         if (lead) {
           addNotification('سەرکەوتن!', `چاوەڕوانکراو "${lead.name}" بوو بە مشتەری`, 'success');
         }
+      }
+      if (user && lead) {
+        logActivity(user.uid, user.email || '', 'UPDATE', 'lead', id, `Updated lead status for ${lead.name} to ${newStatus}`);
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `leads/${id}`);
@@ -115,20 +134,47 @@ export default function Leads() {
     }
   };
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredLeads.map(lead => ({
+      'ناو': lead.name,
+      'کۆمپانیا': lead.company || '',
+      'مۆبایل': lead.phone || '',
+      'ئیمەیڵ': lead.email || '',
+      'دۆخ': getStatusText(lead.status),
+      'تێبینی': lead.notes || '',
+      'بەرواری دروستکردن': new Date(lead.created_at).toLocaleDateString('en-GB')
+    }));
+    exportToCSV(dataToExport, 'leads_export');
+    if (user) {
+      logActivity(user.uid, user.email || '', 'EXPORT', 'lead', 'all', 'Exported leads to CSV');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">چاوەڕوانکراوەکان (Leads)</h1>
-          <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی ئەو کەسانەی کە هێشتا نەبوونەتە مشتەری</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">چاوەڕوانکراوەکان (Leads)</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">بەڕێوەبردنی ئەو کەسانەی کە هێشتا نەبوونەتە مشتەری</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm font-medium"
-        >
-          <UserPlus className="w-5 h-5" />
-          زیادکردنی نوێ
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm font-medium"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden sm:inline">هەناردەکردن</span>
+          </button>
+          {role !== 'Client' && (
+            <button 
+              onClick={() => setShowModal(true)}
+              className="bg-gray-900 dark:bg-primary text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black dark:hover:bg-primary/90 transition-all shadow-sm font-medium"
+            >
+              <UserPlus className="w-5 h-5" />
+              زیادکردنی نوێ
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -192,14 +238,16 @@ export default function Leads() {
                     </select>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(lead)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(lead.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {role !== 'Client' && (
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(lead)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowDeleteModal(lead.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

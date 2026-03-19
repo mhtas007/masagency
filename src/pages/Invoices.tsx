@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Search, Trash2, Edit, FileText, Printer, X } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, FileText, Printer, X, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
-import { useReactToPrint } from 'react-to-print';
 import { addNotification } from '../utils/notifications';
+import { exportToCSV } from '../utils/exportUtils';
+import { logActivity } from '../utils/activityLogger';
+import { useAuth } from '../contexts/AuthContext';
 
 // The printable component
-const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { invoice: any, client: any }>((props, ref) => {
-  const { invoice, client } = props;
+const InvoicePrintTemplate = ({ invoice, client }: { invoice: any, client: any }) => {
   if (!invoice || !client) return null;
 
   return (
-    <div ref={ref} className="p-12 bg-white text-gray-900 relative" dir="rtl" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="p-12 bg-white text-gray-900 relative" dir="rtl" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Background Watermark */}
       <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
         <img src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" alt="Watermark" className="w-[500px] grayscale" referrerPolicy="no-referrer" />
@@ -129,9 +130,10 @@ const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { invoice: any, cl
       </div>
     </div>
   );
-});
+};
 
 export default function Invoices() {
+  const { user, role, clientId: authClientId } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -147,25 +149,36 @@ export default function Invoices() {
   const [items, setItems] = useState([{ description: '', quantity: 1, unit_price: 0 }]);
   const [exchangeRate, setExchangeRate] = useState(1500); // Default IQD to USD rate
 
-  const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: 'Invoice',
-  });
+  const handlePrint = () => {
+    window.print();
+  };
 
   useEffect(() => {
-    const unsubInvoices = onSnapshot(collection(db, 'invoices'), (snapshot) => {
+    let qInvoices;
+    let qClients;
+
+    if (role === 'Client' && authClientId) {
+      qInvoices = query(collection(db, 'invoices'), where('client_id', '==', authClientId));
+      qClients = query(collection(db, 'clients'), where('__name__', '==', authClientId));
+    } else if (role !== 'Client') {
+      qInvoices = collection(db, 'invoices');
+      qClients = collection(db, 'clients');
+    } else {
+      return;
+    }
+
+    const unsubInvoices = onSnapshot(qInvoices, (snapshot) => {
       setInvoices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'invoices');
     });
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
+    const unsubClients = onSnapshot(qClients, (snapshot) => {
       setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'clients');
     });
     return () => { unsubInvoices(); unsubClients(); };
-  }, []);
+  }, [role, authClientId]);
 
   const calculateTotalUSD = () => {
     return items.reduce((total, item) => total + (item.quantity * item.unit_price), 0);
@@ -204,8 +217,11 @@ export default function Invoices() {
           payment_method: paymentMethod,
           updated_at: new Date().toISOString()
         });
+        if (user) {
+          logActivity(user.uid, user.email || '', 'UPDATE', 'invoice', editingId, `Updated invoice #${editingId.substring(0, 8).toUpperCase()}`);
+        }
       } else {
-        await addDoc(collection(db, 'invoices'), {
+        const docRef = await addDoc(collection(db, 'invoices'), {
           client_id: clientId,
           items,
           price_usd: totalUSD,
@@ -217,6 +233,9 @@ export default function Invoices() {
         });
         const client = clients.find(c => c.id === clientId);
         addNotification('فاتورەی نوێ', `فاتورەیەک بە بڕی $${totalUSD} بۆ "${client?.name || 'مشتەری'}" دروستکرا`, 'invoice');
+        if (user) {
+          logActivity(user.uid, user.email || '', 'CREATE', 'invoice', docRef.id, `Created invoice #${docRef.id.substring(0, 8).toUpperCase()} for ${client?.name || 'Unknown'}`);
+        }
       }
       closeModal();
     } catch (error) {
@@ -251,6 +270,9 @@ export default function Invoices() {
     if (showDeleteModal) {
       try {
         await deleteDoc(doc(db, 'invoices', showDeleteModal));
+        if (user) {
+          logActivity(user.uid, user.email || '', 'DELETE', 'invoice', showDeleteModal, `Deleted invoice #${showDeleteModal.substring(0, 8).toUpperCase()}`);
+        }
         setShowDeleteModal(null);
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `invoices/${showDeleteModal}`);
@@ -276,24 +298,48 @@ export default function Invoices() {
     (getClient(invoice.client_id)?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleExport = () => {
+    const exportData = filteredInvoices.map(inv => ({
+      'Invoice ID': inv.id,
+      'Client Name': getClient(inv.client_id)?.name || 'Unknown',
+      'Amount (USD)': inv.price_usd,
+      'Amount (IQD)': inv.price_iqd,
+      'Status': inv.status,
+      'Payment Method': inv.payment_method || 'N/A',
+      'Date': new Date(inv.created_at).toLocaleDateString()
+    }));
+    exportToCSV(exportData, 'Invoices');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">فڕۆشتن و فاتورە</h1>
-          <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی فاتورەکان و پارەدانەکان</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">فڕۆشتن و فاتورە</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">بەڕێوەبردنی فاتورەکان و پارەدانەکان</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          دروستکردنی فاتورە
-        </button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button 
+            onClick={handleExport}
+            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm font-medium flex-1 sm:flex-none"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden sm:inline">دەرکردن</span>
+          </button>
+          {role !== 'Client' && (
+            <button 
+              onClick={() => setShowModal(true)}
+              className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-black dark:hover:bg-gray-100 transition-all shadow-sm hover:shadow-md font-medium flex-1 sm:flex-none"
+            >
+              <Plus className="w-5 h-5" />
+              دروستکردنی فاتورە
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 flex gap-4 bg-gray-50/50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
+        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex gap-4 bg-gray-50/50 dark:bg-gray-800/50">
           <div className="relative flex-1 max-w-md">
             <Search className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
@@ -301,59 +347,63 @@ export default function Invoices() {
               placeholder="گەڕان بۆ فاتورە یان مشتەری..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white shadow-sm transition-shadow"
+              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm transition-shadow"
             />
           </div>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-right">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
               <tr>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">ژمارەی فاتورە</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">مشتەری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">بڕی پارە (IQD)</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">بڕی پارە (USD)</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-300">ژمارەی فاتورە</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-300">مشتەری</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-300">بڕی پارە (IQD)</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-300">بڕی پارە (USD)</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-300">دۆخ</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-300">کردارەکان</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filteredInvoices.map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium" dir="ltr">#{invoice.id.substring(0, 8).toUpperCase()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{getClient(invoice.client_id)?.name || 'نەناسراو'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">{invoice.price_iqd?.toLocaleString()} د.ع</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">${invoice.price_usd?.toLocaleString()}</td>
+                <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium" dir="ltr">#{invoice.id.substring(0, 8).toUpperCase()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{getClient(invoice.client_id)?.name || 'نەناسراو'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-medium">{invoice.price_iqd?.toLocaleString()} د.ع</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-medium">${invoice.price_usd?.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(invoice.status)}`}>
                       {invoice.status === 'Paid' ? 'دراوە' : invoice.status === 'Unpaid' ? 'نەدراوە' : 'دواکەوتوو'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setShowPrintModal(invoice)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="چاپکردن / PDF">
+                      <button onClick={() => setShowPrintModal(invoice)} className="p-2 text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors" title="چاپکردن / PDF">
                         <Printer className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleEdit(invoice)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(invoice.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {role !== 'Client' && (
+                        <>
+                          <button onClick={() => handleEdit(invoice)} className="p-2 text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors" title="دەستکاریکردن">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setShowDeleteModal(invoice.id)} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="سڕینەوە">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
               {filteredInvoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8 text-gray-300" />
+                      <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                        <Search className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                       </div>
-                      <p className="text-lg font-medium text-gray-900">هیچ فاتورەیەک نەدۆزرایەوە</p>
-                      <p className="text-sm text-gray-500 mt-1">وشەیەکی تر تاقی بکەرەوە یان فاتورەیەکی نوێ دروست بکە.</p>
+                      <p className="text-lg font-medium text-gray-900 dark:text-white">هیچ فاتورەیەک نەدۆزرایەوە</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">وشەیەکی تر تاقی بکەرەوە یان فاتورەیەکی نوێ دروست بکە.</p>
                     </div>
                   </td>
                 </tr>
@@ -483,10 +533,9 @@ export default function Invoices() {
               </div>
             </div>
             
-            <div className="p-8 overflow-y-auto flex-1 flex justify-center">
+            <div className="p-8 overflow-y-auto flex-1 flex justify-center print-container">
               <div className="shadow-2xl bg-white">
                 <InvoicePrintTemplate 
-                  ref={printRef} 
                   invoice={showPrintModal} 
                   client={getClient(showPrintModal.client_id)} 
                 />

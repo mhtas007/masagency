@@ -17,13 +17,15 @@ export default function Team() {
   const isAdmin = role === 'Super Admin';
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'users');
     });
     return () => unsub();
-  }, []);
+  }, [role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

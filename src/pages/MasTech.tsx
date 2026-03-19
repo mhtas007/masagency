@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, Search, Trash2, Edit, Monitor, Smartphone, Globe, Code, X } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function MasTech() {
+  const { role, clientId } = useAuth();
   const [services, setServices] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -15,18 +18,31 @@ export default function MasTech() {
   const [formData, setFormData] = useState({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress' });
 
   useEffect(() => {
-    const unsubServices = onSnapshot(collection(db, 'tech_services'), (snapshot) => {
+    let qServices;
+    let qClients;
+
+    if (role === 'Client' && clientId) {
+      qServices = query(collection(db, 'tech_services'), where('client_id', '==', clientId));
+      qClients = query(collection(db, 'clients'), where('__name__', '==', clientId));
+    } else if (role !== 'Client') {
+      qServices = collection(db, 'tech_services');
+      qClients = collection(db, 'clients');
+    } else {
+      return;
+    }
+
+    const unsubServices = onSnapshot(qServices, (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'tech_services');
     });
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
+    const unsubClients = onSnapshot(qClients, (snapshot) => {
       setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'clients');
     });
     return () => { unsubServices(); unsubClients(); };
-  }, []);
+  }, [role, clientId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,13 +123,15 @@ export default function MasTech() {
           <h1 className="text-2xl font-bold text-gray-900">تەکنەلۆجیای MAS</h1>
           <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی خزمەتگوزارییە تەکنەلۆجییەکان</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          خزمەتگوزاری نوێ
-        </button>
+        {role !== 'Client' && (
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            خزمەتگوزاری نوێ
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -157,14 +175,16 @@ export default function MasTech() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(service)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {role !== 'Client' && (
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(service)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

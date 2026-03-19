@@ -3,16 +3,21 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, writeBatch } fr
 import { db } from '../firebase';
 import { Bell, CheckCircle, AlertTriangle, Info, XCircle, Users, Briefcase, FileText, CheckSquare, Target } from 'lucide-react';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function Notifications() {
+  const { role } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const q = query(collection(db, 'notifications'), orderBy('created_at', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsub();
-  }, []);
+  }, [role]);
 
   const markAllAsRead = async () => {
     const unreadNotes = notifications.filter(n => !n.read);

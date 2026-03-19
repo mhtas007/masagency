@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, Search, Trash2, Edit, Facebook, Instagram, Twitter, Youtube, Megaphone, X, FileText, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function Marketing() {
+  const { role, clientId } = useAuth();
   const [activeTab, setActiveTab] = useState<'campaigns' | 'contracts'>('campaigns');
   
   // Campaigns State
@@ -35,26 +38,42 @@ export default function Marketing() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const unsubCampaigns = onSnapshot(collection(db, 'campaigns'), (snapshot) => {
+    let qCampaigns;
+    let qContracts;
+    let qClients;
+
+    if (role === 'Client' && clientId) {
+      qCampaigns = query(collection(db, 'campaigns'), where('client_id', '==', clientId));
+      qContracts = query(collection(db, 'social_contracts'), where('client_id', '==', clientId));
+      qClients = query(collection(db, 'clients'), where('__name__', '==', clientId));
+    } else if (role !== 'Client') {
+      qCampaigns = collection(db, 'campaigns');
+      qContracts = collection(db, 'social_contracts');
+      qClients = collection(db, 'clients');
+    } else {
+      return;
+    }
+
+    const unsubCampaigns = onSnapshot(qCampaigns, (snapshot) => {
       setCampaigns(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'campaigns');
     });
     
-    const unsubContracts = onSnapshot(collection(db, 'social_contracts'), (snapshot) => {
+    const unsubContracts = onSnapshot(qContracts, (snapshot) => {
       setContracts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'social_contracts');
     });
 
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
+    const unsubClients = onSnapshot(qClients, (snapshot) => {
       setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'clients');
     });
     
     return () => { unsubCampaigns(); unsubContracts(); unsubClients(); };
-  }, []);
+  }, [role, clientId]);
 
   // --- Campaign Handlers ---
   const handleSubmit = async (e: React.FormEvent) => {
@@ -209,22 +228,24 @@ export default function Marketing() {
           <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی کەمپەینەکان و گرێبەستەکانی سۆشیاڵ میدیا</p>
         </div>
         <div className="flex gap-2">
-          {activeTab === 'campaigns' ? (
-            <button 
-              onClick={() => setShowModal(true)}
-              className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-            >
-              <Megaphone className="w-5 h-5" />
-              کەمپەینی نوێ
-            </button>
-          ) : (
-            <button 
-              onClick={() => setShowContractModal(true)}
-              className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-            >
-              <FileText className="w-5 h-5" />
-              گرێبەستی نوێ
-            </button>
+          {role !== 'Client' && (
+            activeTab === 'campaigns' ? (
+              <button 
+                onClick={() => setShowModal(true)}
+                className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
+              >
+                <Megaphone className="w-5 h-5" />
+                کەمپەینی نوێ
+              </button>
+            ) : (
+              <button 
+                onClick={() => setShowContractModal(true)}
+                className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
+              >
+                <FileText className="w-5 h-5" />
+                گرێبەستی نوێ
+              </button>
+            )
           )}
         </div>
       </div>
@@ -273,7 +294,7 @@ export default function Marketing() {
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">پلاتفۆڕم</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">بودجە (USD)</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
+                  {role !== 'Client' && <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -290,16 +311,18 @@ export default function Marketing() {
                         {campaign.status === 'Active' ? 'چالاک' : 'وەستاو'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEdit(campaign)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setShowDeleteModal(campaign.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {role !== 'Client' && (
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEdit(campaign)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setShowDeleteModal(campaign.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {filteredCampaigns.length === 0 && (
@@ -328,7 +351,7 @@ export default function Marketing() {
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">ماوەی گرێبەست</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">پارەدان (مانگانە)</th>
                   <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخی پارەدان</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
+                  {role !== 'Client' && <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -361,16 +384,18 @@ export default function Marketing() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEditContract(contract)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => setShowDeleteContractModal(contract.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {role !== 'Client' && (
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleEditContract(contract)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setShowDeleteContractModal(contract.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

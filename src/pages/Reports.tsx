@@ -4,12 +4,17 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function Reports() {
+  const { role } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const unsubInvoices = onSnapshot(collection(db, 'invoices'), (snapshot) => {
       setInvoices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
@@ -26,7 +31,7 @@ export default function Reports() {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
     return () => { unsubInvoices(); unsubProjects(); unsubTransactions(); };
-  }, []);
+  }, [role]);
 
   // Process Revenue Data
   const processRevenueData = () => {

@@ -7,6 +7,7 @@ import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHand
 interface AuthContextType {
   user: User | null;
   role: string | null;
+  clientId: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -23,6 +24,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
             setRole(userDoc.data().role);
+            setClientId(userDoc.data().client_id || null);
           } else {
             // Create default user profile if it doesn't exist
             // Defaulting to 'Super Admin' for the specific first user email
@@ -47,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 created_at: new Date().toISOString()
               });
               setRole(defaultRole);
+              setClientId(null);
             } catch (error) {
               handleFirestoreError(error, OperationType.CREATE, `users/${currentUser.uid}`);
             }
@@ -56,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         setRole(null);
+        setClientId(null);
       }
       setLoading(false);
     });
@@ -82,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, clientId, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

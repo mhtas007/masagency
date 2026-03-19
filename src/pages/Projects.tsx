@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Search, Trash2, Edit, Calendar, FolderPlus, X } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Calendar, FolderPlus, X, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
+import { exportToCSV } from '../utils/exportUtils';
+import { logActivity } from '../utils/activityLogger';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Projects() {
+  const { user, role, clientId } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -15,18 +19,31 @@ export default function Projects() {
   const [formData, setFormData] = useState({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '' });
 
   useEffect(() => {
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
+    let qProjects;
+    let qClients;
+
+    if (role === 'Client' && clientId) {
+      qProjects = query(collection(db, 'projects'), where('client_id', '==', clientId));
+      qClients = query(collection(db, 'clients'), where('__name__', '==', clientId));
+    } else if (role !== 'Client') {
+      qProjects = collection(db, 'projects');
+      qClients = collection(db, 'clients');
+    } else {
+      return;
+    }
+
+    const unsubProjects = onSnapshot(qProjects, (snapshot) => {
       setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'projects');
     });
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
+    const unsubClients = onSnapshot(qClients, (snapshot) => {
       setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'clients');
     });
     return () => { unsubProjects(); unsubClients(); };
-  }, []);
+  }, [role, clientId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,12 +53,18 @@ export default function Projects() {
           ...formData,
           updated_at: new Date().toISOString()
         });
+        if (user) {
+          logActivity(user.uid, user.email || '', 'UPDATE', 'project', editingId, `Updated project ${formData.project_name}`);
+        }
       } else {
-        await addDoc(collection(db, 'projects'), {
+        const docRef = await addDoc(collection(db, 'projects'), {
           ...formData,
           created_at: new Date().toISOString()
         });
         addNotification('پڕۆژەی نوێ', `پڕۆژەی "${formData.project_name}" زیادکرا`, 'project');
+        if (user) {
+          logActivity(user.uid, user.email || '', 'CREATE', 'project', docRef.id, `Created project ${formData.project_name}`);
+        }
       }
       closeModal();
     } catch (error) {
@@ -70,7 +93,11 @@ export default function Projects() {
   const confirmDelete = async () => {
     if (showDeleteModal) {
       try {
+        const projectToDelete = projects.find(p => p.id === showDeleteModal);
         await deleteDoc(doc(db, 'projects', showDeleteModal));
+        if (user) {
+          logActivity(user.uid, user.email || '', 'DELETE', 'project', showDeleteModal, `Deleted project ${projectToDelete?.project_name || 'Unknown'}`);
+        }
         setShowDeleteModal(null);
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `projects/${showDeleteModal}`);
@@ -97,20 +124,49 @@ export default function Projects() {
     getClientName(project.client_id).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredProjects.map(project => ({
+      'ناوی پرۆژە': project.project_name,
+      'مشتەری': getClientName(project.client_id),
+      'جۆری خزمەتگوزاری': project.service_type || '',
+      'دۆخ': project.status === 'Pending' ? 'چاوەڕێکراو' : 
+             project.status === 'In Progress' ? 'لە کارکردندایە' : 
+             project.status === 'Review' ? 'پێداچوونەوە' : 
+             project.status === 'Completed' ? 'تەواوکراو' : project.status,
+      'وادە': project.deadline || '',
+      'بەرواری دروستکردن': new Date(project.created_at).toLocaleDateString('en-GB')
+    }));
+    exportToCSV(dataToExport, 'projects_export');
+    if (user) {
+      logActivity(user.uid, user.email || '', 'EXPORT', 'project', 'all', 'Exported projects to CSV');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">پرۆژەکان</h1>
-          <p className="text-gray-500 text-sm mt-1">بەڕێوەبردن و چاودێریکردنی پرۆژەکانی ئەجێنسی</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">پرۆژەکان</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">بەڕێوەبردن و چاودێریکردنی پرۆژەکانی ئەجێنسی</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-        >
-          <FolderPlus className="w-5 h-5" />
-          زیادکردنی پرۆژە
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm font-medium"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden sm:inline">هەناردەکردن</span>
+          </button>
+          {role !== 'Client' && (
+            <button 
+              onClick={() => setShowModal(true)}
+              className="bg-gray-900 dark:bg-primary text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black dark:hover:bg-primary/90 transition-all shadow-sm hover:shadow-md font-medium"
+            >
+              <FolderPlus className="w-5 h-5" />
+              زیادکردنی پرۆژە
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -160,14 +216,16 @@ export default function Projects() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(project)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(project.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {role !== 'Client' && (
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(project)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowDeleteModal(project.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

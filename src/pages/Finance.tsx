@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, Search, Trash2, ArrowUpRight, ArrowDownRight, Edit, X, DollarSign } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function Finance() {
+  const { role } = useAuth();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
@@ -14,13 +17,15 @@ export default function Finance() {
   const [formData, setFormData] = useState({ description: '', amount: 0, type: 'Income', date: new Date().toISOString().split('T')[0] });
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const unsub = onSnapshot(collection(db, 'transactions'), (snapshot) => {
       setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
     return () => unsub();
-  }, []);
+  }, [role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,13 +93,15 @@ export default function Finance() {
           <h1 className="text-2xl font-bold text-gray-900">سیستەمی دارایی</h1>
           <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی داهات و خەرجییەکان</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          تۆمارکردنی نوێ
-        </button>
+        {role !== 'Client' && (
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm hover:shadow-md font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            تۆمارکردنی نوێ
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -174,14 +181,16 @@ export default function Finance() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(t)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setShowDeleteModal(t.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {role !== 'Client' && (
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(t)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowDeleteModal(t.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

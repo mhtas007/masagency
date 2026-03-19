@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, Search, Trash2, Edit, X, CheckSquare, Clock, CheckCircle } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function Tasks() {
+  const { role } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
@@ -14,13 +17,15 @@ export default function Tasks() {
   const [formData, setFormData] = useState({ title: '', description: '', status: 'To Do', deadline: '' });
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const unsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
       setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'tasks');
     });
     return () => unsub();
-  }, []);
+  }, [role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,12 +104,16 @@ export default function Tasks() {
       <div className="flex justify-between items-start mb-2">
         <h4 className="font-bold text-gray-900">{task.title}</h4>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => handleEdit(task)} className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded">
-            <Edit className="w-4 h-4" />
-          </button>
-          <button onClick={() => setShowDeleteModal(task.id)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {role !== 'Client' && (
+            <>
+              <button onClick={() => handleEdit(task)} className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded">
+                <Edit className="w-4 h-4" />
+              </button>
+              <button onClick={() => setShowDeleteModal(task.id)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
       {task.description && <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>}
@@ -138,13 +147,15 @@ export default function Tasks() {
           <h1 className="text-2xl font-bold text-gray-900">ئەرکەکان (Tasks)</h1>
           <p className="text-gray-500 text-sm mt-1">بەڕێوەبردنی ئەرکەکانی ڕۆژانە و پڕۆژەکان</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          ئەرکی نوێ
-        </button>
+        {role !== 'Client' && (
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-black transition-all shadow-sm font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            ئەرکی نوێ
+          </button>
+        )}
       </div>
 
       <div className="relative max-w-md">

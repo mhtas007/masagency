@@ -5,7 +5,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Users, Briefcase, DollarSign, TrendingUp } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function Dashboard() {
+  const { role } = useAuth();
   const [stats, setStats] = useState({
     clients: 0,
     projects: 0,
@@ -16,6 +19,8 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
 
   useEffect(() => {
+    if (role === 'Client') return;
+
     const unsubClients = onSnapshot(collection(db, 'clients'), (snapshot) => {
       setStats(prev => ({ ...prev, clients: snapshot.size }));
     }, (error) => {
@@ -57,7 +62,7 @@ export default function Dashboard() {
       unsubInvoices(); 
       unsubTransactions(); 
     };
-  }, []);
+  }, [role]);
 
   const processRevenueData = () => {
     const months = ['کانوونی دووەم', 'شوبات', 'ئازار', 'نیسان', 'ئایار', 'حوزەیران', 'تەمموز', 'ئاب', 'ئەیلوول', 'تشرینی یەکەم', 'تشرینی دووەم', 'کانوونی یەکەم'];
