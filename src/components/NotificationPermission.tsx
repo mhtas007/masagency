@@ -56,32 +56,21 @@ export function NotificationPermission() {
       if (permission === 'granted') {
         const msg = await messaging();
         if (msg) {
-          try {
-            // Get the service worker registration to pass to getToken
-            const registration = await navigator.serviceWorker.ready;
-            const currentToken = await getToken(msg, { 
-              vapidKey: 'BIhWam1y6cqc9fQ2vClq-2D4Wh52kVxfJPsds1OkofcdSkLZGWYCMZgXVSqjb_nUrsutbRtkEugs8JEim3-NQGc',
-              serviceWorkerRegistration: registration
+          // Get the service worker registration to pass to getToken
+          const registration = await navigator.serviceWorker.ready;
+          const currentToken = await getToken(msg, { 
+            vapidKey: 'BIhWam1y6cqc9fQ2vClq-2D4Wh52kVxfJPsds1OkofcdSkLZGWYCMZgXVSqjb_nUrsutbRtkEugs8JEim3-NQGc',
+            serviceWorkerRegistration: registration
+          });
+          
+          if (currentToken && user) {
+            // Save token to user's document
+            await updateDoc(doc(db, 'users', user.uid), {
+              fcmTokens: arrayUnion(currentToken)
             });
-            
-            if (currentToken && user) {
-              // Save token to user's document
-              await updateDoc(doc(db, 'users', user.uid), {
-                fcmTokens: arrayUnion(currentToken)
-              });
-              console.log('Token saved successfully');
-              alert('نۆتیفیکەیشن بە سەرکەوتوویی چالاک کرا!');
-            } else {
-              console.error('No registration token available. Request permission to generate one.');
-              alert('کێشەیەک هەیە لە وەرگرتنی تۆکنی نۆتیفیکەیشن.');
-            }
-          } catch (tokenError: any) {
-            console.error('Error getting token:', tokenError);
-            alert(`کێشە لە وەرگرتنی تۆکن: ${tokenError.message}`);
+            console.log('Token saved successfully');
           }
         }
-      } else {
-        alert('ڕێگەت نەدا بە نۆتیفیکەیشن.');
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
