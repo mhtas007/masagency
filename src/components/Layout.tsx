@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, onSnapshot, query, orderBy, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { onMessage } from 'firebase/messaging';
+import { db, messaging } from '../firebase';
 import { 
   LayoutDashboard, 
   Users, 
@@ -40,6 +41,7 @@ const adminNavigation = [
   { name: 'چاوەڕوانکراوەکان (Leads)', href: '/leads', icon: Target },
   { name: 'تیم و دەسەڵاتەکان', href: '/team', icon: Shield },
   { name: 'ئاگادارکردنەوەکان', href: '/notifications', icon: Bell },
+  { name: 'سەنتەری ئاگادارکردنەوە', href: '/notification-center', icon: Megaphone },
   { name: 'ڕێکخستنەکان', href: '/settings', icon: Settings },
 ];
 
@@ -49,6 +51,7 @@ const clientNavigation = [
   { name: 'فڕۆشتن و فاتورە', href: '/invoices', icon: FileText },
   { name: 'مارکێتینگی دیجیتاڵی', href: '/marketing', icon: Megaphone },
   { name: 'تەکنەلۆجیای MAS', href: '/mas-tech', icon: MonitorSmartphone },
+  { name: 'ئاگادارکردنەوەکان', href: '/notifications', icon: Bell },
 ];
 
 export default function Layout() {
@@ -59,24 +62,127 @@ export default function Layout() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    const setupMessaging = async () => {
+      try {
+        const msg = await messaging();
+        if (msg) {
+          onMessage(msg, (payload) => {
+            console.log('Foreground message received:', payload);
+            if (payload.notification) {
+              // Show a browser notification
+              new Notification(payload.notification.title || 'New Notification', {
+                body: payload.notification.body,
+                icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error setting up foreground messaging:', error);
+      }
+    };
+    setupMessaging();
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     
-    let q;
-    if (role === 'Client') {
-      // Clients don't have access to notifications yet, or we need a specific query
-      // For now, let's just not query notifications for clients to avoid permission errors
-      return;
-    } else {
-      q = query(collection(db, 'notifications'), where('read', '==', false));
-    }
+    const q = query(
+      collection(db, 'notifications'), 
+      where('user_id', '==', user.uid),
+      where('read', '==', false)
+    );
     
     const unsub = onSnapshot(q, (snapshot) => {
       setUnreadCount(snapshot.docs.length);
+
+      // Check for new notifications to show browser alert
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          // Only show notification if it was created recently (e.g., last 10 seconds)
+          // to avoid showing notifications for old unread messages on load
+          const createdAt = new Date(data.created_at).getTime();
+          const now = new Date().getTime();
+          if (now - createdAt < 10000) {
+            if (Notification.permission === 'granted') {
+              new Notification(data.title || 'ئاگادارکردنەوەی نوێ', {
+                body: data.message,
+                icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
+              });
+            }
+          }
+        }
+      });
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
     return () => unsub();
-  }, [user, role]);
+  }, [user]);
+
+  useEffect(() => {
+    if (role !== 'Super Admin') return;
+
+    // A simple client-side checker for scheduled notifications.
+    // In a production app, this should be a Cloud Function or a cron job on a server.
+    const checkScheduledNotifications = async () => {
+      try {
+        const now = new Date().toISOString();
+        const q = query(
+          collection(db, 'scheduled_notifications'),
+          where('status', '==', 'pending'),
+          where('scheduled_for', '<=', now)
+        );
+        
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return;
+
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const allUsers: any[] = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const batch = writeBatch(db);
+
+        snapshot.docs.forEach(docSnap => {
+          const note = docSnap.data();
+          let targetUsers = [];
+          
+          if (note.target === 'all') {
+            targetUsers = allUsers;
+          } else if (note.target === 'user') {
+            targetUsers = allUsers.filter(u => u.id === note.targetUserId);
+          } else if (note.target === 'group') {
+            targetUsers = allUsers.filter(u => u.role === note.targetGroup);
+          }
+
+          targetUsers.forEach(user => {
+            const newNotifRef = doc(collection(db, 'notifications'));
+            batch.set(newNotifRef, {
+              title: note.title,
+              message: note.message,
+              url: note.url || null,
+              type: 'info',
+              user_id: user.id,
+              read: false,
+              created_at: new Date().toISOString()
+            });
+          });
+
+          // Mark scheduled notification as sent
+          batch.update(docSnap.ref, { status: 'sent' });
+        });
+
+        await batch.commit();
+        console.log('Processed scheduled notifications');
+      } catch (error) {
+        console.error('Error processing scheduled notifications:', error);
+      }
+    };
+
+    const interval = setInterval(checkScheduledNotifications, 60000); // Check every minute
+    checkScheduledNotifications(); // Check immediately on load
+
+    return () => clearInterval(interval);
+  }, [role]);
 
   const handleLogout = async () => {
     await logout();
@@ -178,14 +284,12 @@ export default function Layout() {
             >
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            {role !== 'Client' && (
-              <Link to="/notifications" className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-                )}
-              </Link>
-            )}
+            <Link to="/notifications" className="relative p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+              )}
+            </Link>
           </div>
         </header>
         

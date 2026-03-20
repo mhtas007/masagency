@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X } from 'lucide-react';
+import { Bell, X, Share, PlusSquare } from 'lucide-react';
 import { getToken } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { messaging, db } from '../firebase';
@@ -7,19 +7,33 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function NotificationPermission() {
   const [showPopup, setShowPopup] = useState(false);
+  const [isIosNotStandalone, setIsIosNotStandalone] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
-    // Check if we should show the popup
     const checkPermission = async () => {
+      // Check if user has dismissed it before (stored in localStorage)
+      const dismissed = localStorage.getItem('notification_popup_dismissed');
+      if (dismissed === 'true') return;
+
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isIos = /iphone|ipad|ipod/.test(userAgent);
+      const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as any).standalone;
+
+      // If it's iOS and not in standalone mode (not added to home screen)
+      if (isIos && !isInStandaloneMode) {
+        setIsIosNotStandalone(true);
+        if (user) {
+          setTimeout(() => setShowPopup(true), 3000);
+        }
+        return;
+      }
+
+      // If Notification API is not supported at all (and not caught by the iOS check)
       if (!('Notification' in window)) return;
       
       // If permission is already granted or denied, don't show the popup
       if (Notification.permission !== 'default') return;
-
-      // Check if user has dismissed it before (stored in localStorage)
-      const dismissed = localStorage.getItem('notification_popup_dismissed');
-      if (dismissed === 'true') return;
 
       // Only show if user is logged in
       if (user) {
@@ -33,11 +47,21 @@ export function NotificationPermission() {
 
   const handleAllow = async () => {
     try {
+      if (!('Notification' in window)) {
+        alert('ئەم براوزەرە پشتگیری نۆتیفیکەیشن ناکات.');
+        return;
+      }
+
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         const msg = await messaging();
         if (msg) {
-          const currentToken = await getToken(msg, { vapidKey: 'BIhWam1y6cqc9fQ2vClq-2D4Wh52kVxfJPsds1OkofcdSkLZGWYCMZgXVSqjb_nUrsutbRtkEugs8JEim3-NQGc' });
+          // Get the service worker registration to pass to getToken
+          const registration = await navigator.serviceWorker.ready;
+          const currentToken = await getToken(msg, { 
+            vapidKey: 'BIhWam1y6cqc9fQ2vClq-2D4Wh52kVxfJPsds1OkofcdSkLZGWYCMZgXVSqjb_nUrsutbRtkEugs8JEim3-NQGc',
+            serviceWorkerRegistration: registration
+          });
           
           if (currentToken && user) {
             // Save token to user's document
@@ -77,24 +101,51 @@ export function NotificationPermission() {
           <Bell className="w-6 h-6 text-blue-600" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">نۆتیفیکەیشنەکان چالاک بکە</h3>
-          <p className="text-sm text-gray-500 mt-1 mb-4 leading-relaxed">
-            بۆ ئەوەی ئاگاداری نوێترین گۆڕانکارییەکان و نامەکان بیت، تکایە ڕێگە بە نۆتیفیکەیشن بدە.
-          </p>
-          <div className="flex gap-2">
-            <button 
-              onClick={handleAllow}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              ڕێگەدان
-            </button>
-            <button 
-              onClick={handleDismiss}
-              className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
-            >
-              نەخێر سوپاس
-            </button>
-          </div>
+          {isIosNotStandalone ? (
+            <>
+              <h3 className="text-lg font-semibold text-gray-900">زیادکردن بۆ شاشەی سەرەکی</h3>
+              <p className="text-sm text-gray-500 mt-1 mb-4 leading-relaxed">
+                بۆ وەرگرتنی نۆتیفیکەیشن لەسەر ئایفۆنەکەت، پێویستە ئەم ئەپە زیاد بکەیت بۆ شاشەی سەرەکی (Home Screen).
+              </p>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4 text-sm text-gray-700 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-blue-500"><Share className="w-4 h-4" /></span>
+                  <span>١. کلیک لە دوگمەی <strong>Share</strong> بکە</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-700"><PlusSquare className="w-4 h-4" /></span>
+                  <span>٢. هەڵبژاردەی <strong>Add to Home Screen</strong> دابگرە</span>
+                </div>
+              </div>
+              <button 
+                onClick={handleDismiss}
+                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                تێگەیشتم
+              </button>
+            </>
+          ) : (
+            <>
+              <h3 className="text-lg font-semibold text-gray-900">نۆتیفیکەیشنەکان چالاک بکە</h3>
+              <p className="text-sm text-gray-500 mt-1 mb-4 leading-relaxed">
+                بۆ ئەوەی ئاگاداری نوێترین گۆڕانکارییەکان و نامەکان بیت، تکایە ڕێگە بە نۆتیفیکەیشن بدە.
+              </p>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleAllow}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  ڕێگەدان
+                </button>
+                <button 
+                  onClick={handleDismiss}
+                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+                >
+                  نەخێر سوپاس
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

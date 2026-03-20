@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, secondaryAuth } from '../firebase';
 import { Plus, Search, Trash2, Edit, X, Shield, User } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +13,9 @@ export default function Team() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ name: '', email: '', role: 'Marketing Specialist' });
+  const [formData, setFormData] = useState({ name: '', email: '', role: 'Marketing Specialist', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const isAdmin = role === 'Super Admin';
 
@@ -29,21 +32,41 @@ export default function Team() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     try {
       if (editingId) {
         await updateDoc(doc(db, 'users', editingId), {
-          ...formData,
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
           updated_at: new Date().toISOString()
         });
       } else {
-        await addDoc(collection(db, 'users'), {
-          ...formData,
+        if (!formData.password || formData.password.length < 6) {
+          throw new Error('وشەی نهێنی دەبێت لانی کەم ٦ پیت بێت');
+        }
+        
+        // Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
+        const newUser = userCredential.user;
+
+        // Add user to Firestore
+        await setDoc(doc(db, 'users', newUser.uid), {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
           created_at: new Date().toISOString()
         });
       }
       closeModal();
-    } catch (error) {
-      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'users');
+    } catch (err: any) {
+      setError(err.message || 'هەڵەیەک ڕوویدا');
+      if (err.code !== 'auth/email-already-in-use') {
+        handleFirestoreError(err, editingId ? OperationType.UPDATE : OperationType.CREATE, 'users');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,7 +74,8 @@ export default function Team() {
     setFormData({
       name: user.name || '',
       email: user.email || '',
-      role: user.role || 'Marketing Specialist'
+      role: user.role || 'Marketing Specialist',
+      password: ''
     });
     setEditingId(user.id);
     setShowModal(true);
@@ -60,7 +84,8 @@ export default function Team() {
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({ name: '', email: '', role: 'Marketing Specialist' });
+    setFormData({ name: '', email: '', role: 'Marketing Specialist', password: '' });
+    setError('');
   };
 
   const confirmDelete = async () => {
@@ -179,6 +204,11 @@ export default function Team() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {error && (
+                <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">ناو <span className="text-red-500">*</span></label>
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" />
@@ -186,8 +216,13 @@ export default function Team() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">ئیمەیڵ <span className="text-red-500">*</span></label>
                 <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" dir="ltr" />
-                <p className="text-xs text-gray-500 mt-1">ئەم ئیمەیڵە دەبێت پێشتر لە سیستەمەکەدا (Firebase Auth) تۆمارکرابێت.</p>
               </div>
+              {!editingId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">وشەی نهێنی <span className="text-red-500">*</span></label>
+                  <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" dir="ltr" minLength={6} />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">ڕۆڵ (دەسەڵات)</label>
                 <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900">
@@ -201,8 +236,8 @@ export default function Team() {
               
               <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-gray-100">
                 <button type="button" onClick={closeModal} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium">پاشگەزبوونەوە</button>
-                <button type="submit" className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium">
-                  {editingId ? 'نوێکردنەوە' : 'پاشەکەوتکردن'}
+                <button type="submit" disabled={loading} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-medium disabled:opacity-70">
+                  {loading ? 'چاوەڕێ بکە...' : (editingId ? 'نوێکردنەوە' : 'پاشەکەوتکردن')}
                 </button>
               </div>
             </form>
