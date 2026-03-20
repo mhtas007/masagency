@@ -83,6 +83,32 @@ async function startServer() {
           },
           data: data || {},
           tokens: tokenBatch,
+          apns: {
+            headers: {
+              'apns-priority': '10',
+            },
+            payload: {
+              aps: {
+                sound: 'default',
+                badge: 1,
+                'mutable-content': 1,
+              },
+            },
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              sound: 'default',
+            },
+          },
+          webpush: {
+            headers: {
+              Urgency: 'high',
+            },
+            notification: {
+              requireInteraction: true,
+            },
+          },
         };
 
         const response = await admin.messaging().sendEachForMulticast(message);

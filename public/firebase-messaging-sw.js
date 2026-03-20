@@ -12,15 +12,58 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Handle background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || 'New Notification';
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'ئاگاداری نوێ';
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new message.',
-    icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
-    data: payload.data
+      body: payload.notification?.body || payload.data?.body || 'تۆ نامەیەکی نوێت بۆ هاتووە.',
+      icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
+      badge: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
+      data: payload.data,
+      tag: 'mas-agency-push-notification',
+      vibrate: [200, 100, 200]
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  const urlToOpen = new URL('/', self.location.origin).href;
+
+  const promiseChain = clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true
+  }).then((windowClients) => {
+    let matchingClient = null;
+
+    for (let i = 0; i < windowClients.length; i++) {
+      const windowClient = windowClients[i];
+      if (windowClient.url === urlToOpen) {
+        matchingClient = windowClient;
+        break;
+      }
+    }
+
+    if (matchingClient) {
+      return matchingClient.focus();
+    } else {
+      return clients.openWindow(urlToOpen);
+    }
+  });
+
+  event.waitUntil(promiseChain);
+});
+
+// Service Worker Lifecycle
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
 });
