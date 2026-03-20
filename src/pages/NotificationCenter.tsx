@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, writeBatch, addDoc, query, orderBy, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Send, Clock, Settings, Trash2, Calendar, Users, Bell, Info, PlusSquare } from 'lucide-react';
+import { Send, Clock, Settings, Trash2, Calendar, Users, Bell, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function NotificationCenter() {
   const { role } = useAuth();
-  const [activeTab, setActiveTab] = useState<'send' | 'scheduled' | 'addScheduled' | 'automated'>('send');
+  const [activeTab, setActiveTab] = useState<'send' | 'scheduled' | 'automated'>('send');
   const [users, setUsers] = useState<any[]>([]);
   
   // Send Form State
@@ -19,8 +19,7 @@ export default function NotificationCenter() {
     targetGroup: 'Client',
     isScheduled: false,
     scheduledDate: '',
-    scheduledTime: '',
-    recurrence: 'none' // 'none' or 'daily'
+    scheduledTime: ''
   });
   const [sending, setSending] = useState(false);
 
@@ -60,7 +59,6 @@ export default function NotificationCenter() {
     e.preventDefault();
     setSending(true);
     try {
-      const isScheduling = activeTab === 'addScheduled';
       let targetUsers = [];
       
       if (sendForm.target === 'all') {
@@ -77,7 +75,7 @@ export default function NotificationCenter() {
         return;
       }
 
-      if (isScheduling) {
+      if (sendForm.isScheduled) {
         if (!sendForm.scheduledDate || !sendForm.scheduledTime) {
           alert('تکایە کات و بەروار دیاری بکە.');
           setSending(false);
@@ -94,13 +92,11 @@ export default function NotificationCenter() {
           targetUserId: sendForm.targetUserId,
           targetGroup: sendForm.targetGroup,
           scheduled_for: scheduledDateTime,
-          recurrence: sendForm.recurrence,
           created_at: new Date().toISOString(),
           status: 'pending'
         });
         
         alert('نۆتیفیکەیشن بە سەرکەوتوویی خشتەکرا.');
-        setActiveTab('scheduled');
       } else {
         const batch = writeBatch(db);
         
@@ -118,30 +114,12 @@ export default function NotificationCenter() {
         });
 
         await batch.commit();
-
-        // Trigger real push notifications
-        try {
-          await fetch('/api/send-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: sendForm.title,
-              body: sendForm.message,
-              targetRole: sendForm.target === 'group' ? sendForm.targetGroup : null,
-              targetUserId: sendForm.target === 'user' ? sendForm.targetUserId : null,
-              data: { url: sendForm.url || '' }
-            }),
-          });
-        } catch (apiError) {
-          console.error('Failed to trigger push notification API:', apiError);
-        }
-
         alert('نۆتیفیکەیشن بە سەرکەوتوویی نێردرا.');
       }
 
       setSendForm({ 
         title: '', message: '', url: '', target: 'all', targetUserId: '', targetGroup: 'Client',
-        isScheduled: false, scheduledDate: '', scheduledTime: '', recurrence: 'none'
+        isScheduled: false, scheduledDate: '', scheduledTime: ''
       });
     } catch (error) {
       console.error("Error sending notification:", error);
@@ -188,15 +166,6 @@ export default function NotificationCenter() {
             خشتەکراوەکان
           </button>
           <button
-            onClick={() => setActiveTab('addScheduled')}
-            className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'addScheduled' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <PlusSquare className="w-4 h-4" />
-            زیادکردنی خشتەکراو
-          </button>
-          <button
             onClick={() => setActiveTab('automated')}
             className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
               activeTab === 'automated' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -208,7 +177,7 @@ export default function NotificationCenter() {
         </div>
 
         <div className="p-6">
-          {activeTab === 'send' || activeTab === 'addScheduled' ? (
+          {activeTab === 'send' && (
             <form onSubmit={handleSendNotification} className="space-y-6 max-w-3xl mx-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">سەردێڕ (Title)</label>
@@ -329,13 +298,23 @@ export default function NotificationCenter() {
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                {activeTab === 'addScheduled' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
+                <label className="flex items-center gap-2 cursor-pointer mb-4">
+                  <input 
+                    type="checkbox" 
+                    checked={sendForm.isScheduled}
+                    onChange={e => setSendForm({...sendForm, isScheduled: e.target.checked})}
+                    className="w-4 h-4 text-gray-900 rounded focus:ring-gray-900" 
+                  />
+                  <span className="text-sm font-medium text-gray-900">خشتەکردنی نۆتیفیکەیشن (Schedule)</span>
+                </label>
+
+                {sendForm.isScheduled && (
+                  <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">بەروار</label>
                       <input 
                         type="date" 
-                        required={activeTab === 'addScheduled'}
+                        required={sendForm.isScheduled}
                         value={sendForm.scheduledDate}
                         onChange={e => setSendForm({...sendForm, scheduledDate: e.target.value})}
                         className="w-full p-2 border border-gray-300 rounded-lg text-sm" 
@@ -345,24 +324,11 @@ export default function NotificationCenter() {
                       <label className="block text-xs font-medium text-gray-700 mb-1">کات</label>
                       <input 
                         type="time" 
-                        required={activeTab === 'addScheduled'}
+                        required={sendForm.isScheduled}
                         value={sendForm.scheduledTime}
                         onChange={e => setSendForm({...sendForm, scheduledTime: e.target.value})}
                         className="w-full p-2 border border-gray-300 rounded-lg text-sm" 
                       />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">دووبارەبوونەوە</label>
-                      <select 
-                        value={sendForm.recurrence}
-                        onChange={e => setSendForm({...sendForm, recurrence: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        <option value="none">یەکجار (بێ دووبارەبوونەوە)</option>
-                        <option value="daily">ڕۆژانە (هەموو ڕۆژێک لەم کاتەدا)</option>
-                        <option value="weekly">هەفتانە (هەموو هەفتەیەک لەم کاتەدا)</option>
-                        <option value="monthly">مانگانە (هەموو مانگێک لەم کاتەدا)</option>
-                      </select>
                     </div>
                   </div>
                 )}
@@ -374,12 +340,12 @@ export default function NotificationCenter() {
                   disabled={sending}
                   className="bg-gray-900 text-white px-8 py-3 rounded-xl flex items-center gap-2 hover:bg-black transition-colors disabled:opacity-50 font-medium"
                 >
-                  {activeTab === 'addScheduled' ? <Calendar className="w-5 h-5" /> : <Send className="w-5 h-5" />}
-                  {sending ? 'چاوەڕێ بکە...' : (activeTab === 'addScheduled' ? 'خشتەکردن' : 'ناردنی ئێستا')}
+                  {sendForm.isScheduled ? <Calendar className="w-5 h-5" /> : <Send className="w-5 h-5" />}
+                  {sending ? 'چاوەڕێ بکە...' : (sendForm.isScheduled ? 'خشتەکردن' : 'ناردنی ئێستا')}
                 </button>
               </div>
             </form>
-          ) : null}
+          )}
 
           {activeTab === 'scheduled' && (
             <div className="space-y-4">
@@ -398,12 +364,6 @@ export default function NotificationCenter() {
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(note.scheduled_for).toLocaleString('ku-IQ')}</span>
                           <span className="flex items-center gap-1"><Users className="w-3 h-3" /> ئامانج: {note.target}</span>
-                          {note.recurrence && note.recurrence !== 'none' && (
-                            <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                              <Calendar className="w-3 h-3" /> 
-                              {note.recurrence === 'daily' ? 'ڕۆژانە' : note.recurrence === 'weekly' ? 'هەفتانە' : 'مانگانە'}
-                            </span>
-                          )}
                           <span className={`px-2 py-0.5 rounded-full ${note.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
                             {note.status === 'pending' ? 'چاوەڕوانکراو' : 'نێردراو'}
                           </span>

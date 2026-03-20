@@ -120,8 +120,67 @@ export default function Layout() {
   }, [user]);
 
   useEffect(() => {
-    // Client-side scheduled notification processing has been moved to the server
-    // for better reliability and to ensure notifications are sent even when the browser is closed.
+    if (role !== 'Super Admin') return;
+
+    // A simple client-side checker for scheduled notifications.
+    // In a production app, this should be a Cloud Function or a cron job on a server.
+    const checkScheduledNotifications = async () => {
+      try {
+        const now = new Date().toISOString();
+        const q = query(
+          collection(db, 'scheduled_notifications'),
+          where('status', '==', 'pending'),
+          where('scheduled_for', '<=', now)
+        );
+        
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return;
+
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const allUsers: any[] = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const batch = writeBatch(db);
+
+        snapshot.docs.forEach(docSnap => {
+          const note = docSnap.data();
+          let targetUsers = [];
+          
+          if (note.target === 'all') {
+            targetUsers = allUsers;
+          } else if (note.target === 'user') {
+            targetUsers = allUsers.filter(u => u.id === note.targetUserId);
+          } else if (note.target === 'group') {
+            targetUsers = allUsers.filter(u => u.role === note.targetGroup);
+          }
+
+          targetUsers.forEach(user => {
+            const newNotifRef = doc(collection(db, 'notifications'));
+            batch.set(newNotifRef, {
+              title: note.title,
+              message: note.message,
+              url: note.url || null,
+              type: 'info',
+              user_id: user.id,
+              read: false,
+              created_at: new Date().toISOString()
+            });
+          });
+
+          // Mark scheduled notification as sent
+          batch.update(docSnap.ref, { status: 'sent' });
+        });
+
+        await batch.commit();
+        console.log('Processed scheduled notifications');
+      } catch (error) {
+        console.error('Error processing scheduled notifications:', error);
+      }
+    };
+
+    const interval = setInterval(checkScheduledNotifications, 60000); // Check every minute
+    checkScheduledNotifications(); // Check immediately on load
+
+    return () => clearInterval(interval);
   }, [role]);
 
   const handleLogout = async () => {
