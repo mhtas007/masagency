@@ -59,7 +59,7 @@ export default function NotificationCenter() {
     e.preventDefault();
     setSending(true);
     try {
-      let targetUsers = [];
+      let targetUsers: any[] = [];
       
       if (sendForm.target === 'all') {
         targetUsers = users;
@@ -98,8 +98,8 @@ export default function NotificationCenter() {
         
         alert('نۆتیفیکەیشن بە سەرکەوتوویی خشتەکرا.');
       } else {
+        // Write in-app notifications to Firestore (one per user with user_id)
         const batch = writeBatch(db);
-        
         targetUsers.forEach(user => {
           const newNotifRef = doc(collection(db, 'notifications'));
           batch.set(newNotifRef, {
@@ -112,8 +112,34 @@ export default function NotificationCenter() {
             created_at: new Date().toISOString()
           });
         });
-
         await batch.commit();
+
+        // ── Send real FCM push via server API ──────────────────────────────
+        try {
+          const pushPayload: any = {
+            title: sendForm.title,
+            body: sendForm.message,
+            data: { type: 'info', url: sendForm.url || '' }
+          };
+
+          if (sendForm.target === 'user') {
+            pushPayload.userId = sendForm.targetUserId;
+          } else if (sendForm.target === 'group') {
+            pushPayload.targetRole = sendForm.targetGroup;
+          }
+          // 'all' → no userId / targetRole → server sends to everyone
+
+          const res = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pushPayload)
+          });
+          const result = await res.json();
+          console.log('[FCM] Push result:', result);
+        } catch (pushErr) {
+          console.error('[FCM] Push API call failed:', pushErr);
+        }
+
         alert('نۆتیفیکەیشن بە سەرکەوتوویی نێردرا.');
       }
 
