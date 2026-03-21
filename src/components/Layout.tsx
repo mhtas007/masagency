@@ -33,6 +33,7 @@ const adminNavigation = [
   { name: 'داشبۆرد', href: '/', icon: LayoutDashboard },
   { name: 'مشتەرییەکان (CRM)', href: '/clients', icon: Users },
   { name: 'پڕۆژەکان', href: '/projects', icon: Briefcase },
+  { name: 'ماس مێنو (Mas Menu)', href: '/mas-menu', icon: MonitorSmartphone },
   { name: 'فڕۆشتن و فاتورە', href: '/invoices', icon: FileText },
   { name: 'مارکێتینگی دیجیتاڵی', href: '/marketing', icon: Megaphone },
   { name: 'راپۆرت و شیکاری', href: '/reports', icon: BarChart3 },
@@ -56,11 +57,17 @@ const clientNavigation = [
 ];
 
 export default function Layout() {
-  const { user, role, logout } = useAuth();
+  const { user, role, isMasMenuClient, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const logoUrl = isMasMenuClient 
+    ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png'
+    : 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png';
+
+  const portalName = isMasMenuClient ? 'پۆرتاڵی ماس مێنو' : 'سیستەمی بەڕێوەبردن';
 
   useEffect(() => {
     const setupMessaging = async () => {
@@ -73,7 +80,9 @@ export default function Layout() {
               // Show a browser notification
               showBrowserNotification(payload.notification.title || 'New Notification', {
                 body: payload.notification.body,
-                icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
+                icon: isMasMenuClient 
+                  ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png'
+                  : 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
               });
             }
           });
@@ -108,7 +117,9 @@ export default function Layout() {
           if (now - createdAt < 10000) {
             showBrowserNotification(data.title || 'ئاگادارکردنەوەی نوێ', {
               body: data.message,
-              icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
+              icon: isMasMenuClient 
+                ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png'
+                : 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
             });
           }
         }
@@ -120,67 +131,8 @@ export default function Layout() {
   }, [user]);
 
   useEffect(() => {
-    if (role !== 'Super Admin') return;
-
-    // A simple client-side checker for scheduled notifications.
-    // In a production app, this should be a Cloud Function or a cron job on a server.
-    const checkScheduledNotifications = async () => {
-      try {
-        const now = new Date().toISOString();
-        const q = query(
-          collection(db, 'scheduled_notifications'),
-          where('status', '==', 'pending'),
-          where('scheduled_for', '<=', now)
-        );
-        
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return;
-
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const allUsers: any[] = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        const batch = writeBatch(db);
-
-        snapshot.docs.forEach(docSnap => {
-          const note = docSnap.data();
-          let targetUsers = [];
-          
-          if (note.target === 'all') {
-            targetUsers = allUsers;
-          } else if (note.target === 'user') {
-            targetUsers = allUsers.filter(u => u.id === note.targetUserId);
-          } else if (note.target === 'group') {
-            targetUsers = allUsers.filter(u => u.role === note.targetGroup);
-          }
-
-          targetUsers.forEach(user => {
-            const newNotifRef = doc(collection(db, 'notifications'));
-            batch.set(newNotifRef, {
-              title: note.title,
-              message: note.message,
-              url: note.url || null,
-              type: 'info',
-              user_id: user.id,
-              read: false,
-              created_at: new Date().toISOString()
-            });
-          });
-
-          // Mark scheduled notification as sent
-          batch.update(docSnap.ref, { status: 'sent' });
-        });
-
-        await batch.commit();
-        console.log('Processed scheduled notifications');
-      } catch (error) {
-        console.error('Error processing scheduled notifications:', error);
-      }
-    };
-
-    const interval = setInterval(checkScheduledNotifications, 60000); // Check every minute
-    checkScheduledNotifications(); // Check immediately on load
-
-    return () => clearInterval(interval);
+    // Client-side scheduled notification processing has been moved to the server
+    // for better reliability and to ensure notifications are sent even when the browser is closed.
   }, [role]);
 
   const handleLogout = async () => {
@@ -195,7 +147,7 @@ export default function Layout() {
   const navigation = role === 'Client' ? clientNavigation : adminNavigation;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200" dir="rtl">
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200 ${isMasMenuClient ? 'theme-mas-menu' : ''}`} dir="rtl">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -206,11 +158,12 @@ export default function Layout() {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 right-0 z-50 w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+        "fixed inset-y-0 right-0 z-50 w-64 border-l border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+        isMasMenuClient ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-white dark:bg-gray-800",
         isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
       )}>
         <div className="h-16 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4">
-          <img src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" alt="MAS Agency" className="h-10 w-auto" referrerPolicy="no-referrer" />
+          <img src={logoUrl} alt="Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
           <button 
             onClick={closeMobileMenu}
             className="lg:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -229,7 +182,7 @@ export default function Layout() {
                 cn(
                   'flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors',
                   isActive
-                    ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
+                    ? (isMasMenuClient ? 'bg-emerald-100 dark:bg-emerald-800/40 text-emerald-900 dark:text-emerald-100' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white')
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 )
               }
@@ -271,8 +224,8 @@ export default function Layout() {
               <Menu className="w-6 h-6" />
             </button>
             <div className="hidden sm:flex items-center gap-3">
-              <img src="https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png" alt="MAS Agency" className="h-8 w-auto" referrerPolicy="no-referrer" />
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">سیستەمی بەڕێوەبردن</h2>
+              <img src={logoUrl} alt="Logo" className="h-8 w-auto" referrerPolicy="no-referrer" />
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{portalName}</h2>
             </div>
           </div>
           <div className="flex items-center gap-4">

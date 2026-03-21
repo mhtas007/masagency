@@ -12,94 +12,23 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ─── Method 1: Firebase SDK background handler ────────────────────────────────
-// This is the standard FCM way. Works on Chrome, Edge, Firefox, and iOS Safari
-// when installed as a PWA (Home Screen).
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Firebase onBackgroundMessage:', payload);
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'ئاگاداری نوێ';
-  const notificationOptions = {
-    body: payload.notification?.body || payload.data?.body || 'تۆ نامەیەکی نوێت بۆ هاتووە.',
-    icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
-    badge: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
-    data: payload.data,
-    tag: 'mas-agency-push-notification',
-    vibrate: [200, 100, 200],
-    requireInteraction: false
-  };
-
-  // Always explicitly call showNotification — required on iOS Safari PWA
-  return self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-// ─── Method 2: Native push event listener (iOS fallback) ─────────────────────
-// iOS Safari PWA sometimes bypasses the Firebase SDK and delivers the raw push
-// event directly to the service worker. This handler catches those cases.
-self.addEventListener('push', (event) => {
-  console.log('[SW] Native push event received:', event);
-
-  let title = 'ئاگاداری نوێ';
-  let body = 'تۆ نامەیەکی نوێت بۆ هاتووە.';
-
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      // FCM wraps the payload — try both standard and data fields
-      title = data.notification?.title || data.data?.title || data.title || title;
-      body = data.notification?.body || data.data?.body || data.body || body;
-    } catch (e) {
-      // If JSON parse fails, try reading as plain text
-      try {
-        body = event.data.text() || body;
-      } catch (_) {}
-    }
+  // If the payload contains a notification object, the browser will automatically
+  // display it. We don't need to call showNotification again.
+  if (payload.notification) {
+    console.log('Notification handled automatically by browser.');
+    return;
   }
 
+  // Fallback for data-only messages
+  const notificationTitle = payload.data?.title || 'New Notification';
   const notificationOptions = {
-    body,
+    body: payload.data?.body || 'You have a new message.',
     icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
-    badge: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png',
-    tag: 'mas-agency-push-notification',
-    vibrate: [200, 100, 200]
+    data: payload.data
   };
 
-  event.waitUntil(
-    self.registration.showNotification(title, notificationOptions)
-  );
-});
-
-// ─── Notification Click Handler ───────────────────────────────────────────────
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  const urlToOpen = new URL('/', self.location.origin).href;
-
-  const promiseChain = clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true
-  }).then((windowClients) => {
-    // If a window is already open, focus it
-    for (let i = 0; i < windowClients.length; i++) {
-      const windowClient = windowClients[i];
-      if (windowClient.url.startsWith(self.location.origin)) {
-        return windowClient.focus();
-      }
-    }
-    // Otherwise open a new window
-    return clients.openWindow(urlToOpen);
-  });
-
-  event.waitUntil(promiseChain);
-});
-
-// ─── Service Worker Lifecycle ─────────────────────────────────────────────────
-self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
-  event.waitUntil(self.clients.claim());
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

@@ -255,5 +255,17 @@ service cloud.firestore {
       allow update: if false; // Logs should be immutable
       allow delete: if false; // Logs should not be deleted
     }
+
+    match /mas_menu_invoices/{invoiceId} {
+      allow read: if isAuthenticated() && !isClient();
+      allow create: if isAuthenticated() && !isClient();
+      allow update: if isAuthenticated() && !isClient();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isAuthenticated() && !isClient();
+      allow write: if isManagerOrAdmin();
+    }
   }
 }

@@ -14,6 +14,7 @@ interface CreatePortalModalProps {
 export default function CreatePortalModal({ client, onClose }: CreatePortalModalProps) {
   const [email, setEmail] = useState(client.email || '');
   const [password, setPassword] = useState('');
+  const [isMasMenuClient, setIsMasMenuClient] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,6 +34,7 @@ export default function CreatePortalModal({ client, onClose }: CreatePortalModal
         email: email,
         role: 'Client',
         client_id: client.id,
+        isMasMenuClient: isMasMenuClient,
         created_at: new Date().toISOString()
       });
 
@@ -100,6 +102,19 @@ export default function CreatePortalModal({ client, onClose }: CreatePortalModal
               minLength={6}
               placeholder="لانی کەم ٦ پیت/ژمارە" 
             />
+          </div>
+
+          <div className="flex items-center gap-3 mt-4">
+            <input
+              type="checkbox"
+              id="masMenuClient"
+              checked={isMasMenuClient}
+              onChange={(e) => setIsMasMenuClient(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
+            />
+            <label htmlFor="masMenuClient" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              ئەمە کڕیاری ماس مێنو (Mas Menu) یە
+            </label>
           </div>
           
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
