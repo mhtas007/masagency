@@ -1,5 +1,18 @@
 {
   "entities": {
+    "CompanyUpdate": {
+      "title": "CompanyUpdate",
+      "description": "A company update or latest work.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "image_url": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "image_url", "created_at", "updated_at"]
+    },
     "User": {
       "title": "User",
       "description": "A user of the MAS Agency system (team member or client).",
@@ -172,6 +185,10 @@
     }
   },
   "firestore": {
+    "/company_updates/{updateId}": {
+      "schema": { "$ref": "#/entities/CompanyUpdate" },
+      "description": "Stores company updates and latest works."
+    },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
       "description": "Stores user profiles."

@@ -23,7 +23,8 @@ import {
   Shield,
   Moon,
   Sun,
-  MessageSquare
+  MessageSquare,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../contexts/ThemeContext';
@@ -35,6 +36,7 @@ const adminNavigation = [
   { name: 'مشتەرییەکان (CRM)', href: '/clients', icon: Users },
   { name: 'پڕۆژەکان', href: '/projects', icon: Briefcase },
   { name: 'داواکاری کڕیاران', href: '/client-requests', icon: MessageSquare },
+  { name: 'نوێترین کارەکان', href: '/company-updates', icon: Sparkles },
   { name: 'فڕۆشتن و فاتورە', href: '/invoices', icon: FileText },
   { name: 'مارکێتینگی دیجیتاڵی', href: '/marketing', icon: Megaphone },
   { name: 'راپۆرت و شیکاری', href: '/reports', icon: BarChart3 },

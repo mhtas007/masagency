@@ -166,10 +166,27 @@ service cloud.firestore {
              data.created_at is string;
     }
 
+    function isValidCompanyUpdate(data) {
+      return data.keys().hasAll(['title', 'description', 'image_url', 'created_at', 'updated_at']) &&
+             data.keys().hasOnly(['title', 'description', 'image_url', 'created_at', 'updated_at']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 5000 &&
+             data.image_url is string && data.image_url.size() > 0 && data.image_url.size() < 1000 &&
+             data.created_at is string &&
+             data.updated_at is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
     
+    match /company_updates/{updateId} {
+      allow read: if isAuthenticated();
+      allow create: if isManagerOrAdmin() && isValidCompanyUpdate(request.resource.data);
+      allow update: if isManagerOrAdmin() && isValidCompanyUpdate(request.resource.data);
+      allow delete: if isManagerOrAdmin();
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated() && (isAdmin() || isOwner(userId) || !isClient());
       allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isAdmin() || isOwner(userId));
@@ -284,7 +301,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidClientRequest(request.resource.data) && (isClientOwner(request.resource.data.client_id) || !isClient());
       allow update: if isAuthenticated() && !isClient();
       allow update: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isClient() && isClientOwner(resource.data.client_id));
     }
 
     match /mas_menu_invoices/{invoiceId} {

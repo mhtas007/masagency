@@ -22,8 +22,11 @@ import Leads from './pages/Leads';
 import Team from './pages/Team';
 import ClientPortal from './pages/ClientPortal';
 import ClientRequests from './pages/ClientRequests';
+import CompanyUpdates from './pages/CompanyUpdates';
 import { ThemeProvider } from './contexts/ThemeContext';
 import SplashScreen from './components/SplashScreen';
+
+import AddToHomeScreen from './components/AddToHomeScreen';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -88,6 +91,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <AddToHomeScreen />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -103,6 +107,7 @@ export default function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="notification-center" element={<NotificationCenter />} />
               <Route path="client-requests" element={<ClientRequests />} />
+              <Route path="company-updates" element={<CompanyUpdates />} />
               <Route path="tasks" element={<Tasks />} />
               <Route path="leads" element={<Leads />} />
               <Route path="team" element={<Team />} />
