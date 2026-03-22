@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, Search, Trash2, Edit, Calendar, FolderPlus, X, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
@@ -16,7 +16,7 @@ export default function Projects() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '' });
+  const [formData, setFormData] = useState({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '', demoLink: '', stage: 'Planning' });
 
   useEffect(() => {
     let qProjects;
@@ -56,6 +56,25 @@ export default function Projects() {
         if (user) {
           logActivity(user.uid, user.email || '', 'UPDATE', 'project', editingId, `Updated project ${formData.project_name}`);
         }
+        
+        // Notify client about the update
+        try {
+          const usersQuery = query(collection(db, 'users'), where('client_id', '==', formData.client_id));
+          const usersSnapshot = await getDocs(usersQuery);
+          
+          usersSnapshot.forEach(async (userDoc) => {
+            await addDoc(collection(db, 'notifications'), {
+              user_id: userDoc.id,
+              title: 'نوێکاری لە پرۆژەکەت',
+              message: `گۆڕانکاری لە پرۆژەی "${formData.project_name}" کرا. قۆناغی ئێستا: ${formData.stage}`,
+              read: false,
+              created_at: new Date().toISOString()
+            });
+          });
+        } catch (notifErr) {
+          console.error("Error sending notification to client:", notifErr);
+        }
+        
       } else {
         const docRef = await addDoc(collection(db, 'projects'), {
           ...formData,
@@ -78,7 +97,9 @@ export default function Projects() {
       project_name: project.project_name || '',
       service_type: project.service_type || '',
       status: project.status || 'Pending',
-      deadline: project.deadline || ''
+      deadline: project.deadline || '',
+      demoLink: project.demoLink || '',
+      stage: project.stage || 'Planning'
     });
     setEditingId(project.id);
     setShowModal(true);
@@ -87,7 +108,7 @@ export default function Projects() {
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '' });
+    setFormData({ client_id: '', project_name: '', service_type: '', status: 'Pending', deadline: '', demoLink: '', stage: 'Planning' });
   };
 
   const confirmDelete = async () => {
@@ -191,6 +212,7 @@ export default function Projects() {
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">مشتەری</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">جۆری خزمەتگوزاری</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">قۆناغ</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">وادە</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
               </tr>
@@ -209,6 +231,7 @@ export default function Projects() {
                        project.status === 'Completed' ? 'تەواوکراو' : project.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">{project.stage || 'Planning'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2" dir="ltr">
                       {project.deadline && <Calendar className="w-4 h-4 text-gray-400" />}
@@ -287,6 +310,20 @@ export default function Projects() {
                     <option value="Review">پێداچوونەوە (Review)</option>
                     <option value="Completed">تەواوکراو (Completed)</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">قۆناغی پرۆژە (Stage)</label>
+                  <select value={formData.stage} onChange={e => setFormData({...formData, stage: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
+                    <option value="Planning">پلان دانان (Planning)</option>
+                    <option value="Design">دیزاین (Design)</option>
+                    <option value="Development">گەشەپێدان (Development)</option>
+                    <option value="Testing">تاقیکردنەوە (Testing)</option>
+                    <option value="Completed">تەواوکراو (Completed)</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">لینکی دێمۆ (Demo Link)</label>
+                  <input type="url" value={formData.demoLink} onChange={e => setFormData({...formData, demoLink: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" placeholder="https://..." dir="ltr" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">وادە (Deadline)</label>

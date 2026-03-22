@@ -8,7 +8,6 @@ interface AuthContextType {
   user: User | null;
   role: string | null;
   clientId: string | null;
-  isMasMenuClient: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -26,7 +25,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [isMasMenuClient, setIsMasMenuClient] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +37,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const data = userDoc.data();
             setRole(data.role);
             setClientId(data.client_id || null);
-            setIsMasMenuClient(data.isMasMenuClient || false);
           } else {
             // Create default user profile if it doesn't exist
             // Defaulting to 'Super Admin' for the specific first user email
@@ -55,7 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               setRole(defaultRole);
               setClientId(null);
-              setIsMasMenuClient(false);
             } catch (error) {
               handleFirestoreError(error, OperationType.CREATE, `users/${currentUser.uid}`);
             }
@@ -66,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setRole(null);
         setClientId(null);
-        setIsMasMenuClient(false);
       }
       setLoading(false);
     });
@@ -93,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, clientId, isMasMenuClient, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, clientId, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

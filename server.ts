@@ -88,11 +88,7 @@ async function startServer() {
         } else if (note.target === 'user') {
           targetUsers = allUsers.filter(u => u.id === note.targetUserId);
         } else if (note.target === 'group') {
-          if (note.targetGroup === 'MasMenuClient') {
-            targetUsers = allUsers.filter(u => u.isMasMenuClient === true);
-          } else {
-            targetUsers = allUsers.filter(u => u.role === note.targetGroup);
-          }
+          targetUsers = allUsers.filter(u => u.role === note.targetGroup);
         }
 
         // 1. Create in-app notifications
@@ -124,8 +120,7 @@ async function startServer() {
             const message = {
               notification: { 
                 title: note.title, 
-                body: note.message,
-                imageUrl: note.targetGroup === 'MasMenuClient' ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png' : undefined
+                body: note.message
               },
               data: { url: note.url || '' },
               tokens: tokenBatch,
@@ -239,9 +234,7 @@ async function startServer() {
         return res.json({ success: true, successCount: response.successCount, failureCount: response.failureCount });
       }
 
-      if (targetRole === 'MasMenuClient') {
-         usersQuery = usersQuery.where('isMasMenuClient', '==', true);
-      } else if (targetRole) {
+      if (targetRole) {
          usersQuery = usersQuery.where('role', '==', targetRole);
       }
       
@@ -276,8 +269,7 @@ async function startServer() {
         const message = {
           notification: {
             title,
-            body,
-            imageUrl: targetRole === 'MasMenuClient' ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png' : undefined,
+            body
           },
           data: data || {},
           tokens: tokenBatch,

@@ -68,11 +68,7 @@ export default function NotificationCenter() {
       } else if (sendForm.target === 'user') {
         targetUsers = users.filter(u => u.id === sendForm.targetUserId);
       } else if (sendForm.target === 'group') {
-        if (sendForm.targetGroup === 'MasMenuClient') {
-          targetUsers = users.filter(u => u.isMasMenuClient === true);
-        } else {
-          targetUsers = users.filter(u => u.role === sendForm.targetGroup);
-        }
+        targetUsers = users.filter(u => u.role === sendForm.targetGroup);
       }
 
       if (targetUsers.length === 0) {
@@ -313,7 +309,6 @@ export default function NotificationCenter() {
                       className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900"
                     >
                       <option value="Client">مشتەرییەکان (Clients)</option>
-                      <option value="MasMenuClient">کڕیارانی ماس مێنو (Mas Menu)</option>
                       <option value="Manager">بەڕێوەبەران (Managers)</option>
                       <option value="Marketing Specialist">مارکێتینگەکان</option>
                       <option value="Designer">دیزاینەرەکان</option>

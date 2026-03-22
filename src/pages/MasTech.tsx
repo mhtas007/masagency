@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Search, Trash2, Edit, Monitor, Smartphone, Globe, Code, X } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Monitor, Smartphone, Globe, Code, X, ExternalLink } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
 
@@ -15,7 +15,7 @@ export default function MasTech() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress' });
+  const [formData, setFormData] = useState({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress', demoLink: '', stage: 'Planning' });
 
   useEffect(() => {
     let qServices;
@@ -53,6 +53,26 @@ export default function MasTech() {
           price: Number(formData.price),
           updated_at: new Date().toISOString()
         });
+
+        // Notify client about the update
+        try {
+          const usersQuery = query(collection(db, 'users'), where('client_id', '==', formData.client_id));
+          const usersSnapshot = await getDocs(usersQuery);
+          
+          usersSnapshot.forEach(async (userDoc) => {
+            await addDoc(collection(db, 'notifications'), {
+              user_id: userDoc.id,
+              title: 'نوێکاری لە خزمەتگوزاری تەکنەلۆژی',
+              message: `گۆڕانکاری لە خزمەتگوزاری "${formData.service_name}" کرا. قۆناغی ئێستا: ${formData.stage}`,
+              type: 'project',
+              read: false,
+              created_at: new Date().toISOString()
+            });
+          });
+        } catch (notifErr) {
+          console.error("Error sending notification to client:", notifErr);
+        }
+
       } else {
         await addDoc(collection(db, 'tech_services'), {
           ...formData,
@@ -73,7 +93,9 @@ export default function MasTech() {
       service_name: service.service_name || '',
       type: service.type || 'Website',
       price: service.price || 0,
-      status: service.status || 'In Progress'
+      status: service.status || 'In Progress',
+      demoLink: service.demoLink || '',
+      stage: service.stage || 'Planning'
     });
     setEditingId(service.id);
     setShowModal(true);
@@ -82,7 +104,7 @@ export default function MasTech() {
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress' });
+    setFormData({ client_id: '', service_name: '', type: 'Website', price: 0, status: 'In Progress', demoLink: '', stage: 'Planning' });
   };
 
   const confirmDelete = async () => {
@@ -155,7 +177,7 @@ export default function MasTech() {
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">ناوی خزمەتگوزاری</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">مشتەری</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">جۆر</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">نرخ (USD)</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">قۆناغ</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
               </tr>
@@ -168,23 +190,36 @@ export default function MasTech() {
                   <td className="px-6 py-4 text-sm text-gray-600 flex items-center gap-2">
                     {getTypeIcon(service.type)} {service.type}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium" dir="ltr">${service.price?.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                    {service.stage === 'Planning' ? 'پلان دانان' :
+                     service.stage === 'Design' ? 'دیزاین' :
+                     service.stage === 'Development' ? 'گەشەپێدان' :
+                     service.stage === 'Testing' ? 'تاقیکردنەوە' :
+                     service.stage === 'Completed' ? 'تەواوکراو' : service.stage || 'پلان دانان'}
+                  </td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${service.status === 'Completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>
                       {service.status === 'Completed' ? 'تەواوکراو' : 'لە کارکردندایە'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {role !== 'Client' && (
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEdit(service)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {service.demoLink && (
+                        <a href={service.demoLink} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="بینینی دێمۆ">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                      {role !== 'Client' && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEdit(service)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -254,6 +289,21 @@ export default function MasTech() {
                     <option value="In Progress">لە کارکردندایە</option>
                     <option value="Completed">تەواوکراو</option>
                   </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">قۆناغی ئێستا</label>
+                  <select value={formData.stage} onChange={e => setFormData({...formData, stage: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow">
+                    <option value="Planning">پلان دانان (Planning)</option>
+                    <option value="Design">دیزاین (Design)</option>
+                    <option value="Development">گەشەپێدان (Development)</option>
+                    <option value="Testing">تاقیکردنەوە (Testing)</option>
+                    <option value="Completed">تەواوکراو (Completed)</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">لینکی دێمۆ (ئارەزوومەندانە)</label>
+                  <input type="url" value={formData.demoLink} onChange={e => setFormData({...formData, demoLink: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow" placeholder="https://demo.example.com" dir="ltr" />
+                  <p className="text-xs text-gray-500 mt-1">ئەم لینکە لە کلاینت پۆرتال پیشان دەدرێت بۆ ئەوەی کڕیار بتوانێت پرۆژەکەی ببینێت.</p>
                 </div>
               </div>
               

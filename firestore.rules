@@ -76,7 +76,9 @@ service cloud.firestore {
              data.project_name is string && data.project_name.size() > 0 && data.project_name.size() < 200 &&
              (!('service_type' in data) || (data.service_type is string && data.service_type.size() < 100)) &&
              data.status in ['Pending', 'In Progress', 'Review', 'Completed'] &&
-             (!('deadline' in data) || data.deadline is string);
+             (!('deadline' in data) || data.deadline is string) &&
+             (!('demoLink' in data) || (data.demoLink is string && data.demoLink.size() < 500)) &&
+             (!('stage' in data) || (data.stage is string && data.stage.size() < 100));
     }
 
     function isValidInvoice(data) {
@@ -101,7 +103,9 @@ service cloud.firestore {
              data.client_id is string && data.client_id.size() > 0 &&
              data.service_name is string && data.service_name.size() > 0 && data.service_name.size() < 200 &&
              data.type is string && data.type.size() > 0 && data.type.size() < 100 &&
-             data.price is number && data.price >= 0;
+             data.price is number && data.price >= 0 &&
+             (!('demoLink' in data) || (data.demoLink is string && data.demoLink.size() < 500)) &&
+             (!('stage' in data) || (data.stage is string && data.stage.size() < 100));
     }
 
     function isValidTransaction(data) {
@@ -174,35 +178,40 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if isAuthenticated() && (!isClient() || isClientOwner(clientId));
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(clientId);
       allow create: if isAuthenticated() && !isClient() && isValidClient(request.resource.data);
       allow update: if isAuthenticated() && !isClient() && isValidClient(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read: if isAuthenticated() && (!isClient() || isClientOwner(resource.data.client_id));
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
       allow create: if isAuthenticated() && !isClient() && isValidProject(request.resource.data);
       allow update: if isAuthenticated() && !isClient() && isValidProject(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /invoices/{invoiceId} {
-      allow read: if isAuthenticated() && (!isClient() || isClientOwner(resource.data.client_id));
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
       allow create: if isAuthenticated() && !isClient() && isValidInvoice(request.resource.data);
       allow update: if isAuthenticated() && !isClient() && isValidInvoice(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /campaigns/{campaignId} {
-      allow read: if isAuthenticated() && (!isClient() || isClientOwner(resource.data.client_id));
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
       allow create: if isAuthenticated() && !isClient() && isValidCampaign(request.resource.data);
       allow update: if isAuthenticated() && !isClient() && isValidCampaign(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /tech_services/{serviceId} {
-      allow read: if isAuthenticated() && (!isClient() || isClientOwner(resource.data.client_id));
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
       allow create: if isAuthenticated() && !isClient() && isValidTechService(request.resource.data);
       allow update: if isAuthenticated() && !isClient() && isValidTechService(request.resource.data);
       allow delete: if isAdmin();
@@ -215,7 +224,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /social_contracts/{contractId} {
-      allow read: if isAuthenticated() && (!isClient() || isClientOwner(resource.data.client_id));
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
       allow create: if isAuthenticated() && !isClient() && isValidSocialContract(request.resource.data);
       allow update: if isAuthenticated() && !isClient() && isValidSocialContract(request.resource.data);
       allow delete: if isAdmin();
@@ -228,9 +238,9 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && (isAdmin() || request.auth.uid == resource.data.user_id);
-      allow create: if isAuthenticated() && (isAdmin() || isManagerOrAdmin());
-      allow update: if isAuthenticated() && (isAdmin() || request.auth.uid == resource.data.user_id);
+      allow read: if isAuthenticated() && (isAdmin() || request.auth.uid == resource.data.user_id || (isManagerOrAdmin() && resource.data.user_id == 'admin'));
+      allow create: if isAuthenticated() && (isAdmin() || isManagerOrAdmin() || (isClient() && request.resource.data.user_id == 'admin'));
+      allow update: if isAuthenticated() && (isAdmin() || request.auth.uid == resource.data.user_id || (isManagerOrAdmin() && resource.data.user_id == 'admin'));
       allow delete: if isAdmin();
     }
 
@@ -254,6 +264,27 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidActivityLog(request.resource.data);
       allow update: if false; // Logs should be immutable
       allow delete: if false; // Logs should not be deleted
+    }
+
+    function isValidClientRequest(data) {
+      return data.keys().hasAll(['client_id', 'user_id', 'subject', 'message', 'status', 'created_at', 'updated_at']) &&
+             data.client_id is string && data.client_id.size() > 0 &&
+             data.user_id is string && data.user_id.size() > 0 &&
+             data.subject is string && data.subject.size() > 0 && data.subject.size() < 200 &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 5000 &&
+             data.status in ['pending', 'replied', 'closed'] &&
+             data.created_at is string &&
+             data.updated_at is string &&
+             (!('replies' in data) || data.replies is list);
+    }
+
+    match /client_requests/{requestId} {
+      allow read: if isAuthenticated() && !isClient();
+      allow read: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
+      allow create: if isAuthenticated() && isValidClientRequest(request.resource.data) && (isClientOwner(request.resource.data.client_id) || !isClient());
+      allow update: if isAuthenticated() && !isClient();
+      allow update: if isAuthenticated() && isClient() && isClientOwner(resource.data.client_id);
+      allow delete: if isAdmin();
     }
 
     match /mas_menu_invoices/{invoiceId} {

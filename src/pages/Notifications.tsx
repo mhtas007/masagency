@@ -6,25 +6,31 @@ import { Bell, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Notifications() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
     // Fetch notifications for the current user
-    const q = query(
-      collection(db, 'notifications'), 
-      where('user_id', '==', user.uid),
-      orderBy('created_at', 'desc')
-    );
+    const q = ['Admin', 'Super Admin'].includes(role || '')
+      ? query(
+          collection(db, 'notifications'),
+          where('user_id', 'in', [user.uid, 'admin']),
+          orderBy('created_at', 'desc')
+        )
+      : query(
+          collection(db, 'notifications'), 
+          where('user_id', '==', user.uid),
+          orderBy('created_at', 'desc')
+        );
     
     const unsub = onSnapshot(q, (snapshot) => {
       setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
     return () => unsub();
-  }, [user]);
+  }, [user, role]);
 
   const markAllAsRead = async () => {
     const unreadNotes = notifications.filter(n => !n.read);

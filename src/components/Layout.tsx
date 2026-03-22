@@ -22,7 +22,8 @@ import {
   Target,
   Shield,
   Moon,
-  Sun
+  Sun,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../contexts/ThemeContext';
@@ -33,7 +34,7 @@ const adminNavigation = [
   { name: 'داشبۆرد', href: '/', icon: LayoutDashboard },
   { name: 'مشتەرییەکان (CRM)', href: '/clients', icon: Users },
   { name: 'پڕۆژەکان', href: '/projects', icon: Briefcase },
-  { name: 'ماس مێنو (Mas Menu)', href: '/mas-menu', icon: MonitorSmartphone },
+  { name: 'داواکاری کڕیاران', href: '/client-requests', icon: MessageSquare },
   { name: 'فڕۆشتن و فاتورە', href: '/invoices', icon: FileText },
   { name: 'مارکێتینگی دیجیتاڵی', href: '/marketing', icon: Megaphone },
   { name: 'راپۆرت و شیکاری', href: '/reports', icon: BarChart3 },
@@ -57,17 +58,15 @@ const clientNavigation = [
 ];
 
 export default function Layout() {
-  const { user, role, isMasMenuClient, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const logoUrl = isMasMenuClient 
-    ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png'
-    : 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png';
+  const logoUrl = 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png';
 
-  const portalName = isMasMenuClient ? 'پۆرتاڵی ماس مێنو' : 'سیستەمی بەڕێوەبردن';
+  const portalName = 'سیستەمی بەڕێوەبردن';
 
   useEffect(() => {
     const setupMessaging = async () => {
@@ -80,9 +79,7 @@ export default function Layout() {
               // Show a browser notification
               showBrowserNotification(payload.notification.title || 'New Notification', {
                 body: payload.notification.body,
-                icon: isMasMenuClient 
-                  ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png'
-                  : 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
+                icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
               });
             }
           });
@@ -97,11 +94,17 @@ export default function Layout() {
   useEffect(() => {
     if (!user) return;
     
-    const q = query(
-      collection(db, 'notifications'), 
-      where('user_id', '==', user.uid),
-      where('read', '==', false)
-    );
+    const q = ['Admin', 'Super Admin'].includes(role || '')
+      ? query(
+          collection(db, 'notifications'),
+          where('user_id', 'in', [user.uid, 'admin']),
+          where('read', '==', false)
+        )
+      : query(
+          collection(db, 'notifications'), 
+          where('user_id', '==', user.uid),
+          where('read', '==', false)
+        );
     
     const unsub = onSnapshot(q, (snapshot) => {
       setUnreadCount(snapshot.docs.length);
@@ -117,9 +120,7 @@ export default function Layout() {
           if (now - createdAt < 10000) {
             showBrowserNotification(data.title || 'ئاگادارکردنەوەی نوێ', {
               body: data.message,
-              icon: isMasMenuClient 
-                ? 'https://clear-emerald-ai6w2bgrdm.edgeone.app/Untitled%20design%20-%202026-02-26T045717.518.png'
-                : 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
+              icon: 'https://colonial-amethyst-puymdof8z7.edgeone.app/Untitled%20design%20-%202026-03-17T052123.849.png'
             });
           }
         }
@@ -128,7 +129,7 @@ export default function Layout() {
       console.error("Error fetching notifications:", error);
     });
     return () => unsub();
-  }, [user]);
+  }, [user, role]);
 
   useEffect(() => {
     // Client-side scheduled notification processing has been moved to the server
@@ -147,7 +148,7 @@ export default function Layout() {
   const navigation = role === 'Client' ? clientNavigation : adminNavigation;
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200 ${isMasMenuClient ? 'theme-mas-menu' : ''}`} dir="rtl">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200" dir="rtl">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -159,7 +160,7 @@ export default function Layout() {
       {/* Sidebar */}
       <div className={cn(
         "fixed inset-y-0 right-0 z-50 w-64 border-l border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0",
-        isMasMenuClient ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-white dark:bg-gray-800",
+        "bg-white dark:bg-gray-800",
         isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
       )}>
         <div className="h-16 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4">
@@ -182,7 +183,7 @@ export default function Layout() {
                 cn(
                   'flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors',
                   isActive
-                    ? (isMasMenuClient ? 'bg-emerald-100 dark:bg-emerald-800/40 text-emerald-900 dark:text-emerald-100' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white')
+                    ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 )
               }

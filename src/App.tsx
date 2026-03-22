@@ -13,7 +13,6 @@ import Invoices from './pages/Invoices';
 import Marketing from './pages/Marketing';
 import Reports from './pages/Reports';
 import MasTech from './pages/MasTech';
-import MasMenu from './pages/MasMenu';
 import Finance from './pages/Finance';
 import Notifications from './pages/Notifications';
 import NotificationCenter from './pages/NotificationCenter';
@@ -22,6 +21,7 @@ import Tasks from './pages/Tasks';
 import Leads from './pages/Leads';
 import Team from './pages/Team';
 import ClientPortal from './pages/ClientPortal';
+import ClientRequests from './pages/ClientRequests';
 import { ThemeProvider } from './contexts/ThemeContext';
 import SplashScreen from './components/SplashScreen';
 
@@ -99,10 +99,10 @@ export default function App() {
               <Route path="marketing" element={<Marketing />} />
               <Route path="reports" element={<Reports />} />
               <Route path="mas-tech" element={<MasTech />} />
-              <Route path="mas-menu" element={<MasMenu />} />
               <Route path="finance" element={<Finance />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="notification-center" element={<NotificationCenter />} />
+              <Route path="client-requests" element={<ClientRequests />} />
               <Route path="tasks" element={<Tasks />} />
               <Route path="leads" element={<Leads />} />
               <Route path="team" element={<Team />} />
