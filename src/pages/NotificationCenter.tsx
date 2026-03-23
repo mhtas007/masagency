@@ -164,21 +164,21 @@ export default function NotificationCenter() {
   };
 
   if (role !== 'Super Admin') {
-    return <div className="p-8 text-center text-gray-500">تەنها ئەدمین دەتوانێت ئەم پەڕەیە ببینێت.</div>;
+    return <div className="p-8 text-center text-gray-500 dark:text-gray-400">تەنها ئەدمین دەتوانێت ئەم پەڕەیە ببینێت.</div>;
   }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">سەنتەری ئاگادارکردنەوەکان</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">سەنتەری ئاگادارکردنەوەکان</h1>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex border-b border-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
+        <div className="flex border-b border-gray-100 dark:border-gray-700">
           <button
             onClick={() => setActiveTab('send')}
             className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'send' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === 'send' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <Send className="w-4 h-4" />
@@ -187,7 +187,7 @@ export default function NotificationCenter() {
           <button
             onClick={() => setActiveTab('scheduled')}
             className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'scheduled' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === 'scheduled' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <Clock className="w-4 h-4" />
@@ -196,7 +196,7 @@ export default function NotificationCenter() {
           <button
             onClick={() => setActiveTab('addScheduled')}
             className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'addScheduled' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === 'addScheduled' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <PlusSquare className="w-4 h-4" />
@@ -205,7 +205,7 @@ export default function NotificationCenter() {
           <button
             onClick={() => setActiveTab('automated')}
             className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'automated' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === 'automated' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <Settings className="w-4 h-4" />
@@ -217,86 +217,86 @@ export default function NotificationCenter() {
           {activeTab === 'send' || activeTab === 'addScheduled' ? (
             <form onSubmit={handleSendNotification} className="space-y-6 max-w-3xl mx-auto">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">سەردێڕ (Title)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">سەردێڕ (Title)</label>
                 <input 
                   type="text" 
                   required
                   value={sendForm.title}
                   onChange={e => setSendForm({...sendForm, title: e.target.value})}
                   placeholder="نموونە: ئۆفەری نوێ، یان ئاگادارییەکی گرنگ" 
-                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" 
+                  className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white" 
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ناوەڕۆک (Body)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ناوەڕۆک (Body)</label>
                 <textarea 
                   required
                   value={sendForm.message}
                   onChange={e => setSendForm({...sendForm, message: e.target.value})}
                   placeholder="ئەو نامەیەی دەتەوێت بیگەیەنیت..." 
                   rows={4}
-                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 resize-none" 
+                  className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white resize-none" 
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">لینک (URL) - ئارەزوومەندانە</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">لینک (URL) - ئارەزوومەندانە</label>
                 <input 
                   type="url" 
                   value={sendForm.url}
                   onChange={e => setSendForm({...sendForm, url: e.target.value})}
                   placeholder="https://..." 
-                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900" 
+                  className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white" 
                   dir="ltr"
                 />
               </div>
 
-              <div className="pt-4 border-t border-gray-100">
-                <label className="block text-sm font-medium text-gray-700 mb-3">دیاریکردنی نێرراو (Target)</label>
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">دیاریکردنی نێرراو (Target)</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${sendForm.target === 'all' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${sendForm.target === 'all' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-700/50' : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
                     <input 
                       type="radio" 
                       name="target" 
                       value="all" 
                       checked={sendForm.target === 'all'}
                       onChange={() => setSendForm({...sendForm, target: 'all'})}
-                      className="w-4 h-4 text-gray-900 focus:ring-gray-900" 
+                      className="w-4 h-4 text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white" 
                     />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900">هەموو بەکارهێنەران</span>
-                      <span className="text-xs text-gray-500">ناردن بۆ هەمووان</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">هەموو بەکارهێنەران</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">ناردن بۆ هەمووان</span>
                     </div>
                   </label>
                   
-                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${sendForm.target === 'group' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${sendForm.target === 'group' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-700/50' : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
                     <input 
                       type="radio" 
                       name="target" 
                       value="group" 
                       checked={sendForm.target === 'group'}
                       onChange={() => setSendForm({...sendForm, target: 'group'})}
-                      className="w-4 h-4 text-gray-900 focus:ring-gray-900" 
+                      className="w-4 h-4 text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white" 
                     />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900">گرووپێکی دیاریکراو</span>
-                      <span className="text-xs text-gray-500">بەپێی ڕۆڵەکان</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">گرووپێکی دیاریکراو</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">بەپێی ڕۆڵەکان</span>
                     </div>
                   </label>
 
-                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${sendForm.target === 'user' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${sendForm.target === 'user' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-700/50' : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
                     <input 
                       type="radio" 
                       name="target" 
                       value="user" 
                       checked={sendForm.target === 'user'}
                       onChange={() => setSendForm({...sendForm, target: 'user'})}
-                      className="w-4 h-4 text-gray-900 focus:ring-gray-900" 
+                      className="w-4 h-4 text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white" 
                     />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900">بەکارهێنەرێکی دیاریکراو</span>
-                      <span className="text-xs text-gray-500">بەپێی ناو یان ئیمەیڵ</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">بەکارهێنەرێکی دیاریکراو</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">بەپێی ناو یان ئیمەیڵ</span>
                     </div>
                   </label>
                 </div>
@@ -306,7 +306,7 @@ export default function NotificationCenter() {
                     <select 
                       value={sendForm.targetGroup}
                       onChange={e => setSendForm({...sendForm, targetGroup: e.target.value})}
-                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900"
+                      className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white"
                     >
                       <option value="Client">مشتەرییەکان (Clients)</option>
                       <option value="Manager">بەڕێوەبەران (Managers)</option>
@@ -322,7 +322,7 @@ export default function NotificationCenter() {
                     <select 
                       value={sendForm.targetUserId}
                       onChange={e => setSendForm({...sendForm, targetUserId: e.target.value})}
-                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900"
+                      className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white"
                       required={sendForm.target === 'user'}
                     >
                       <option value="">هەڵبژێرە...</option>
@@ -334,35 +334,35 @@ export default function NotificationCenter() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
                 {activeTab === 'addScheduled' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 mb-6">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">بەروار</label>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">بەروار</label>
                       <input 
                         type="date" 
                         required={activeTab === 'addScheduled'}
                         value={sendForm.scheduledDate}
                         onChange={e => setSendForm({...sendForm, scheduledDate: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-lg text-sm" 
+                        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white" 
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">کات</label>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">کات</label>
                       <input 
                         type="time" 
                         required={activeTab === 'addScheduled'}
                         value={sendForm.scheduledTime}
                         onChange={e => setSendForm({...sendForm, scheduledTime: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-lg text-sm" 
+                        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white" 
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">دووبارەبوونەوە</label>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">دووبارەبوونەوە</label>
                       <select 
                         value={sendForm.recurrence}
                         onChange={e => setSendForm({...sendForm, recurrence: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                        className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
                       >
                         <option value="none">یەکجار (بێ دووبارەبوونەوە)</option>
                         <option value="daily">ڕۆژانە (هەموو ڕۆژێک لەم کاتەدا)</option>
@@ -378,7 +378,7 @@ export default function NotificationCenter() {
                 <button 
                   type="submit"
                   disabled={sending}
-                  className="bg-gray-900 text-white px-8 py-3 rounded-xl flex items-center gap-2 hover:bg-black transition-colors disabled:opacity-50 font-medium"
+                  className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-8 py-3 rounded-xl flex items-center gap-2 hover:bg-black dark:hover:bg-gray-100 transition-colors disabled:opacity-50 font-medium"
                 >
                   {activeTab === 'addScheduled' ? <Calendar className="w-5 h-5" /> : <Send className="w-5 h-5" />}
                   {sending ? 'چاوەڕێ بکە...' : (activeTab === 'addScheduled' ? 'خشتەکردن' : 'ناردنی ئێستا')}
@@ -390,34 +390,34 @@ export default function NotificationCenter() {
           {activeTab === 'scheduled' && (
             <div className="space-y-4">
               {scheduledNotes.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <Calendar className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
                   <p>هیچ نۆتیفیکەیشنێکی خشتەکراو نییە.</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
                   {scheduledNotes.map(note => (
-                    <div key={note.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div key={note.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{note.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{note.message}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{note.title}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{note.message}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(note.scheduled_for).toLocaleString('ku-IQ')}</span>
                           <span className="flex items-center gap-1"><Users className="w-3 h-3" /> ئامانج: {note.target}</span>
                           {note.recurrence && note.recurrence !== 'none' && (
-                            <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                            <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                               <Calendar className="w-3 h-3" /> 
                               {note.recurrence === 'daily' ? 'ڕۆژانە' : note.recurrence === 'weekly' ? 'هەفتانە' : 'مانگانە'}
                             </span>
                           )}
-                          <span className={`px-2 py-0.5 rounded-full ${note.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                          <span className={`px-2 py-0.5 rounded-full ${note.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>
                             {note.status === 'pending' ? 'چاوەڕوانکراو' : 'نێردراو'}
                           </span>
                         </div>
                       </div>
                       <button 
                         onClick={() => handleDeleteScheduled(note.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                         title="سڕینەوە"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -431,7 +431,7 @@ export default function NotificationCenter() {
 
           {activeTab === 'automated' && (
             <div className="space-y-6">
-              <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm flex items-start gap-3">
+              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-xl text-sm flex items-start gap-3">
                 <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
                 <p>
                   لەم بەشەدا دەتوانیت یاسا دابنێیت بۆ ناردنی نۆتیفیکەیشن بە شێوەی ئۆتۆماتیکی (بۆ نموونە: کاتێک کڕیارێکی نوێ زیاد دەکرێت، نامەیەکی بەخێرهاتنی بۆ بڕوات).
@@ -440,22 +440,22 @@ export default function NotificationCenter() {
 
               <div className="grid gap-4">
                 {/* Example Automated Rules - In a real app, these would be editable */}
-                <div className="p-4 bg-white border border-gray-200 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-between">
                   <div>
-                    <h4 className="font-semibold text-gray-900">بەخێرهاتنی کڕیاری نوێ</h4>
-                    <p className="text-sm text-gray-500 mt-1">کاتێک ئەکاونتی کڕیار دروست دەکرێت، ڕاستەوخۆ نۆتیفیکەیشنی بەخێرهاتنی بۆ دەچێت.</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-white">بەخێرهاتنی کڕیاری نوێ</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">کاتێک ئەکاونتی کڕیار دروست دەکرێت، ڕاستەوخۆ نۆتیفیکەیشنی بەخێرهاتنی بۆ دەچێت.</p>
                   </div>
                   <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600 transition-colors focus:outline-none cursor-pointer" dir="ltr">
                     <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" />
                   </div>
                 </div>
 
-                <div className="p-4 bg-white border border-gray-200 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-between">
                   <div>
-                    <h4 className="font-semibold text-gray-900">بیرخستنەوەی پسوڵە (Invoice)</h4>
-                    <p className="text-sm text-gray-500 mt-1">٣ ڕۆژ پێش وادەی کۆتایی پسوڵە، نۆتیفیکەیشن بۆ کڕیار دەچێت.</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-white">بیرخستنەوەی پسوڵە (Invoice)</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">٣ ڕۆژ پێش وادەی کۆتایی پسوڵە، نۆتیفیکەیشن بۆ کڕیار دەچێت.</p>
                   </div>
-                  <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none cursor-pointer" dir="ltr">
+                  <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 dark:bg-gray-600 transition-colors focus:outline-none cursor-pointer" dir="ltr">
                     <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
                   </div>
                 </div>

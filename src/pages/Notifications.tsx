@@ -61,27 +61,27 @@ export default function Notifications() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">ئاگادارکردنەوەکان</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ئاگادارکردنەوەکان</h1>
         <button 
           onClick={markAllAsRead}
-          className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           هەمووی بکە بە خوێندراوە
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
         {notifications.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 flex flex-col items-center">
-            <Bell className="w-12 h-12 mb-4 text-gray-300" />
+          <div className="p-12 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center">
+            <Bell className="w-12 h-12 mb-4 text-gray-300 dark:text-gray-600" />
             <p className="text-lg">هیچ ئاگادارکردنەوەیەک نییە</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {notifications.map((notification) => (
               <div 
                 key={notification.id} 
-                className={`p-4 transition-colors hover:bg-gray-50 cursor-pointer ${!notification.read ? 'bg-blue-50/30' : ''}`}
+                className={`p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer ${!notification.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
                 onClick={() => !notification.read && markAsRead(notification.id)}
               >
                 <div className="flex gap-4">
@@ -90,14 +90,14 @@ export default function Notifications() {
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-1">
-                      <h3 className={`font-medium ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                      <h3 className={`font-medium ${!notification.read ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                         {notification.title}
                       </h3>
-                      <span className="text-xs text-gray-500 whitespace-nowrap mr-4">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap mr-4">
                         {new Date(notification.created_at).toLocaleDateString('ku-IQ')}
                       </span>
                     </div>
-                    <p className={`text-sm ${!notification.read ? 'text-gray-800' : 'text-gray-500'}`}>
+                    <p className={`text-sm ${!notification.read ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}`}>
                       {notification.message}
                     </p>
                     {notification.url && (
@@ -105,7 +105,7 @@ export default function Notifications() {
                         href={notification.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-block mt-2 text-sm text-blue-600 hover:underline"
+                        className="inline-block mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
                         بینینی زیاتر

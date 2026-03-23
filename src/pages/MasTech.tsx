@@ -156,8 +156,8 @@ export default function MasTech() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 flex gap-4 bg-gray-50/50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
+        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex gap-4 bg-gray-50/50 dark:bg-gray-800/50">
           <div className="relative flex-1 max-w-md">
             <Search className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
@@ -165,32 +165,32 @@ export default function MasTech() {
               placeholder="گەڕان بۆ خزمەتگوزاری یان مشتەری..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white shadow-sm transition-shadow"
+              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm transition-shadow"
             />
           </div>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-right">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
               <tr>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">ناوی خزمەتگوزاری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">مشتەری</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">جۆر</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">قۆناغ</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">دۆخ</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">کردارەکان</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">ناوی خزمەتگوزاری</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">مشتەری</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">جۆر</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">قۆناغ</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">دۆخ</th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">کردارەکان</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filteredServices.map((service) => (
-                <tr key={service.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{service.service_name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{getClientName(service.client_id)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 flex items-center gap-2">
+                <tr key={service.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">{service.service_name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{getClientName(service.client_id)}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
                     {getTypeIcon(service.type)} {service.type}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-medium">
                     {service.stage === 'Planning' ? 'پلان دانان' :
                      service.stage === 'Design' ? 'دیزاین' :
                      service.stage === 'Development' ? 'گەشەپێدان' :
@@ -202,19 +202,19 @@ export default function MasTech() {
                       {service.status === 'Completed' ? 'تەواوکراو' : 'لە کارکردندایە'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                     <div className="flex items-center gap-2">
                       {service.demoLink && (
-                        <a href={service.demoLink} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="بینینی دێمۆ">
+                        <a href={service.demoLink} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="بینینی دێمۆ">
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       )}
                       {role !== 'Client' && (
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEdit(service)} className="p-2 text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="دەستکاریکردن">
+                          <button onClick={() => handleEdit(service)} className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="دەستکاریکردن">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="سڕینەوە">
+                          <button onClick={() => setShowDeleteModal(service.id)} className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="سڕینەوە">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -225,13 +225,13 @@ export default function MasTech() {
               ))}
               {filteredServices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8 text-gray-300" />
+                      <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                        <Search className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                       </div>
-                      <p className="text-lg font-medium text-gray-900">هیچ خزمەتگوزارییەک نەدۆزرایەوە</p>
-                      <p className="text-sm text-gray-500 mt-1">وشەیەکی تر تاقی بکەرەوە یان خزمەتگوزاری نوێ زیاد بکە.</p>
+                      <p className="text-lg font-medium text-gray-900 dark:text-white">هیچ خزمەتگوزارییەک نەدۆزرایەوە</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">وشەیەکی تر تاقی بکەرەوە یان خزمەتگوزاری نوێ زیاد بکە.</p>
                     </div>
                   </td>
                 </tr>

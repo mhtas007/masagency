@@ -93,57 +93,57 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 font-medium">کۆی داهات (USD)</h3>
-            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+            <h3 className="text-gray-500 dark:text-gray-400 font-medium">کۆی داهات (USD)</h3>
+            <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600 dark:text-green-400">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900" dir="ltr">${stats.revenueUSD.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white" dir="ltr">${stats.revenueUSD.toLocaleString()}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 font-medium">کۆی داهات (IQD)</h3>
-            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+            <h3 className="text-gray-500 dark:text-gray-400 font-medium">کۆی داهات (IQD)</h3>
+            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <TrendingUp className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900" dir="ltr">{stats.revenueIQD.toLocaleString()} د.ع</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white" dir="ltr">{stats.revenueIQD.toLocaleString()} د.ع</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 font-medium">پرۆژە چالاکەکان</h3>
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900">
+            <h3 className="text-gray-500 dark:text-gray-400 font-medium">پرۆژە چالاکەکان</h3>
+            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-900 dark:text-white">
               <Briefcase className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.projects}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.projects}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 font-medium">مشتەرییەکان</h3>
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900">
+            <h3 className="text-gray-500 dark:text-gray-400 font-medium">مشتەرییەکان</h3>
+            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-900 dark:text-white">
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.clients}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.clients}</p>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">ئاستی داهاتی مانگانە (USD)</h3>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">ئاستی داهاتی مانگانە (USD)</h3>
         <div className="h-80 w-full" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} />
-              <YAxis axisLine={false} tickLine={false} />
-              <Tooltip cursor={{fill: '#F3F4F6'}} />
-              <Bar dataKey="revenue" fill="#111827" radius={[4, 4, 0, 0]} name="داهات" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF' }} />
+              <Tooltip cursor={{fill: 'rgba(156, 163, 175, 0.1)'}} contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F3F4F6' }} />
+              <Bar dataKey="revenue" fill="#F27D26" radius={[4, 4, 0, 0]} name="داهات" />
             </BarChart>
           </ResponsiveContainer>
         </div>
