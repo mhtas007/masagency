@@ -60,14 +60,14 @@ export default function MasTech() {
           const usersSnapshot = await getDocs(usersQuery);
           
           usersSnapshot.forEach(async (userDoc) => {
-            await addDoc(collection(db, 'notifications'), {
-              user_id: userDoc.id,
-              title: 'نوێکاری لە خزمەتگوزاری تەکنەلۆژی',
-              message: `گۆڕانکاری لە خزمەتگوزاری "${formData.service_name}" کرا. قۆناغی ئێستا: ${formData.stage}`,
-              type: 'project',
-              read: false,
-              created_at: new Date().toISOString()
-            });
+            await addNotification(
+              'نوێکاری لە خزمەتگوزاری تەکنەلۆژی',
+              `گۆڕانکاری لە خزمەتگوزاری "${formData.service_name}" کرا. قۆناغی ئێستا: ${formData.stage}`,
+              'project',
+              undefined,
+              userDoc.id,
+              '/mas-tech'
+            );
           });
         } catch (notifErr) {
           console.error("Error sending notification to client:", notifErr);

@@ -96,29 +96,31 @@ export default function ClientOnboarding() {
           </button>
 
           {/* Content Area */}
-          <div className="p-8 pt-16 flex flex-col items-center text-center min-h-[360px] justify-center relative">
+          <div className="p-8 pt-16 flex flex-col items-center text-center min-h-[380px] justify-center relative overflow-hidden">
             
             {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
             
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide}
-                initial={{ x: 50, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -50, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col items-center"
+                initial={{ x: 50, opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: -50, opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex flex-col items-center relative z-10"
               >
-                <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-8 ${slide.bg} shadow-inner`}>
-                  <Icon className={`w-12 h-12 ${slide.color}`} />
+                <div className={`relative w-28 h-28 rounded-[2.5rem] flex items-center justify-center mb-8 ${slide.bg} shadow-lg border border-white/50 dark:border-gray-700/50 backdrop-blur-sm`}>
+                  <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/40 to-transparent dark:from-white/10 dark:to-transparent pointer-events-none"></div>
+                  <Icon className={`w-14 h-14 ${slide.color} drop-shadow-sm`} />
                 </div>
                 
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
                   {slide.title}
                 </h2>
                 
-                <p className="text-gray-500 dark:text-gray-400 leading-relaxed max-w-[280px]">
+                <p className="text-gray-500 dark:text-gray-400 leading-relaxed max-w-[300px] text-lg">
                   {slide.description}
                 </p>
               </motion.div>
@@ -126,33 +128,43 @@ export default function ClientOnboarding() {
           </div>
 
           {/* Footer Area */}
-          <div className="p-8 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex flex-col items-center gap-6">
+          <div className="p-8 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 flex flex-col items-center gap-8">
             
             {/* Dots */}
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               {SLIDES.map((_, idx) => (
                 <div 
                   key={idx} 
-                  className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-8 bg-primary' : 'w-2 bg-gray-300 dark:bg-gray-600'}`}
+                  className={`h-2.5 rounded-full transition-all duration-500 ease-out ${idx === currentSlide ? 'w-10 bg-primary shadow-md shadow-primary/30' : 'w-2.5 bg-gray-300 dark:bg-gray-700'}`}
                 />
               ))}
             </div>
 
-            {/* Next Button */}
-            <button
-              onClick={handleNext}
-              className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
-            >
-              {currentSlide === SLIDES.length - 1 ? (
-                <>
-                  دەستپێکردن <CheckCircle2 className="w-5 h-5" />
-                </>
-              ) : (
-                <>
-                  دواتر <ChevronRight className="w-5 h-5 rotate-180" />
-                </>
+            {/* Actions */}
+            <div className="flex w-full gap-3">
+              {currentSlide > 0 && (
+                <button
+                  onClick={() => setCurrentSlide(prev => prev - 1)}
+                  className="w-14 h-14 flex items-center justify-center bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm border border-gray-200 dark:border-gray-700 shrink-0"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
               )}
-            </button>
+              <button
+                onClick={handleNext}
+                className="flex-1 bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              >
+                {currentSlide === SLIDES.length - 1 ? (
+                  <>
+                    دەستپێکردن <CheckCircle2 className="w-5 h-5" />
+                  </>
+                ) : (
+                  <>
+                    دواتر <ChevronRight className="w-5 h-5 rotate-180" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>

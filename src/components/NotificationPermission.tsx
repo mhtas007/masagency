@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, Share, PlusSquare } from 'lucide-react';
+import { Bell, X, Share, PlusSquare, Smartphone } from 'lucide-react';
 import { getToken } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { messaging, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function NotificationPermission() {
   const [showPopup, setShowPopup] = useState(false);
@@ -96,69 +97,101 @@ export function NotificationPermission() {
     localStorage.setItem('notification_popup_dismissed', 'true');
   };
 
-  if (!showPopup) return null;
-
   return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-50 animate-in slide-in-from-bottom-5">
-      <button 
-        onClick={handleDismiss}
-        className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
-      >
-        <X className="w-5 h-5" />
-      </button>
-      
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-          <Bell className="w-6 h-6 text-blue-600" />
-        </div>
-        <div>
-          {isIosNotStandalone ? (
-            <>
-              <h3 className="text-lg font-semibold text-gray-900">زیادکردن بۆ شاشەی سەرەکی</h3>
-              <p className="text-sm text-gray-500 mt-1 mb-4 leading-relaxed">
-                بۆ وەرگرتنی نۆتیفیکەیشن لەسەر ئایفۆنەکەت، پێویستە ئەم ئەپە زیاد بکەیت بۆ شاشەی سەرەکی (Home Screen).
-              </p>
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4 text-sm text-gray-700 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-blue-500"><Share className="w-4 h-4" /></span>
-                  <span>١. کلیک لە دوگمەی <strong>Share</strong> بکە</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-700"><PlusSquare className="w-4 h-4" /></span>
-                  <span>٢. هەڵبژاردەی <strong>Add to Home Screen</strong> دابگرە</span>
-                </div>
+    <AnimatePresence>
+      {showPopup && (
+        <>
+          {/* Backdrop for mobile */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[60] sm:hidden"
+            onClick={handleDismiss}
+          />
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 sm:bottom-6 sm:right-6 sm:left-auto sm:w-[400px] bg-white dark:bg-gray-800 sm:rounded-3xl rounded-t-3xl shadow-2xl border border-gray-100 dark:border-gray-700 p-6 sm:p-8 z-[70] overflow-hidden"
+          >
+            {/* Decorative background element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+            
+            <button 
+              onClick={handleDismiss}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-full transition-colors z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex flex-col items-center text-center relative z-10">
+              <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-primary/20">
+                {isIosNotStandalone ? (
+                  <Smartphone className="w-8 h-8 text-primary" />
+                ) : (
+                  <Bell className="w-8 h-8 text-primary" />
+                )}
               </div>
-              <button 
-                onClick={handleDismiss}
-                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
-              >
-                تێگەیشتم
-              </button>
-            </>
-          ) : (
-            <>
-              <h3 className="text-lg font-semibold text-gray-900">نۆتیفیکەیشنەکان چالاک بکە</h3>
-              <p className="text-sm text-gray-500 mt-1 mb-4 leading-relaxed">
-                بۆ ئەوەی ئاگاداری نوێترین گۆڕانکارییەکان و نامەکان بیت، تکایە ڕێگە بە نۆتیفیکەیشن بدە.
-              </p>
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleAllow}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  ڕێگەدان
-                </button>
-                <button 
-                  onClick={handleDismiss}
-                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
-                >
-                  نەخێر سوپاس
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+              
+              {isIosNotStandalone ? (
+                <>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">ئەپەکە دابەزێنە</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                    بۆ وەرگرتنی نۆتیفیکەیشن و ئەزموونێکی باشتر، ئەپەکە زیاد بکە بۆ شاشەی سەرەکی مۆبایلەکەت.
+                  </p>
+                  
+                  <div className="w-full bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 mb-6 text-sm text-gray-700 dark:text-gray-300 space-y-4 text-right">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 rounded-xl shadow-sm text-primary border border-gray-100 dark:border-gray-700 shrink-0">
+                        <Share className="w-4 h-4" />
+                      </div>
+                      <span>١. کلیک لە دوگمەی <strong>Share</strong> بکە لە خوارەوە</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 rounded-xl shadow-sm text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 shrink-0">
+                        <PlusSquare className="w-4 h-4" />
+                      </div>
+                      <span>٢. هەڵبژاردەی <strong>Add to Home Screen</strong> دابگرە</span>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={handleDismiss}
+                    className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-3.5 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    تێگەیشتم
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">نۆتیفیکەیشنەکان چالاک بکە</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
+                    بۆ ئەوەی ئاگاداری نوێترین گۆڕانکارییەکان و نامەکان بیت، تکایە ڕێگە بە نۆتیفیکەیشن بدە.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row w-full gap-3">
+                    <button 
+                      onClick={handleAllow}
+                      className="flex-1 bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      ڕێگەدان
+                    </button>
+                    <button 
+                      onClick={handleDismiss}
+                      className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-3.5 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      نەخێر سوپاس
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

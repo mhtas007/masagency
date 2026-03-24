@@ -1,14 +1,18 @@
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-export const addNotification = async (title: string, message: string, type: string, targetRole?: string) => {
+export const addNotification = async (title: string, message: string, type: string, targetRole?: string, targetUserId?: string, url?: string) => {
   try {
+    const finalTargetRole = targetRole || (!targetUserId ? 'Admin' : null);
+    
     // Add to Firestore for in-app history
     await addDoc(collection(db, 'notifications'), {
       title,
       message,
       type,
-      targetRole: targetRole || null,
+      targetRole: finalTargetRole,
+      user_id: targetUserId || (finalTargetRole === 'Admin' ? 'admin' : null),
+      url: url || null,
       created_at: new Date().toISOString(),
       read: false
     });
@@ -23,8 +27,9 @@ export const addNotification = async (title: string, message: string, type: stri
         body: JSON.stringify({
           title,
           body: message,
-          targetRole: targetRole || null,
-          data: { type }
+          targetRole: finalTargetRole,
+          targetUserId: targetUserId || null,
+          data: { type, url: url || '/' }
         }),
       });
     } catch (apiError) {

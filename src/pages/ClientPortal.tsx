@@ -118,14 +118,14 @@ export default function ClientPortal() {
       }
 
       // Notify admins
-      await addDoc(collection(db, 'notifications'), {
-        user_id: 'admin',
-        title: 'نامەی نوێ لە کڕیارەوە',
-        message: `نامەیەکی نوێ هەیە: ${messageText.substring(0, 50)}`,
-        type: 'client',
-        read: false,
-        created_at: new Date().toISOString()
-      });
+      await addNotification(
+        'نامەی نوێ لە کڕیارەوە',
+        `نامەیەکی نوێ هەیە: ${messageText.substring(0, 50)}`,
+        'client',
+        'Admin',
+        undefined,
+        '/client-requests'
+      );
 
       setChatMessage('');
     } catch (error) {
@@ -190,7 +190,7 @@ export default function ClientPortal() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl flex items-center gap-5 min-w-[300px]"
+            className="w-full md:w-auto bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl flex items-center gap-5 md:min-w-[300px]"
           >
             <div className="relative">
               <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="Manager" className="w-16 h-16 rounded-full border-2 border-white/50" />
@@ -309,31 +309,33 @@ export default function ClientPortal() {
                         </div>
 
                         {/* Timeline Steps */}
-                        <div className="relative pt-4 pb-2">
-                          {/* Track */}
-                          <div className="absolute top-1/2 right-0 w-full h-1.5 bg-gray-100 dark:bg-gray-700 -translate-y-1/2 rounded-full overflow-hidden">
-                            <div 
-                              className="absolute top-0 right-0 h-full bg-primary transition-all duration-1000 ease-out rounded-full"
-                              style={{ width: `${progressPercentage}%` }}
-                            ></div>
-                          </div>
-                          
-                          <div className="relative flex justify-between w-full">
-                            {PROJECT_STAGES.map((stage, index) => {
-                              const isCompleted = index <= currentStageIndex;
-                              const isActive = index === currentStageIndex;
-                              
-                              return (
-                                <div key={stage} className="flex flex-col items-center relative group">
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center z-10 transition-all duration-500 border-4 border-white dark:border-gray-800 shadow-sm ${isCompleted ? 'bg-primary text-white scale-110' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
-                                    {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-4 h-4" />}
+                        <div className="relative pt-4 pb-8 overflow-x-auto hide-scrollbar">
+                          <div className="min-w-[500px] relative">
+                            {/* Track */}
+                            <div className="absolute top-1/2 right-0 w-full h-1.5 bg-gray-100 dark:bg-gray-700 -translate-y-1/2 rounded-full overflow-hidden">
+                              <div 
+                                className="absolute top-0 right-0 h-full bg-primary transition-all duration-1000 ease-out rounded-full"
+                                style={{ width: `${progressPercentage}%` }}
+                              ></div>
+                            </div>
+                            
+                            <div className="relative flex justify-between w-full">
+                              {PROJECT_STAGES.map((stage, index) => {
+                                const isCompleted = index <= currentStageIndex;
+                                const isActive = index === currentStageIndex;
+                                
+                                return (
+                                  <div key={stage} className="flex flex-col items-center relative group">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center z-10 transition-all duration-500 border-4 border-white dark:border-gray-800 shadow-sm ${isCompleted ? 'bg-primary text-white scale-110' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                                      {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-4 h-4" />}
+                                    </div>
+                                    <span className={`absolute -bottom-8 whitespace-nowrap text-xs md:text-sm font-bold transition-colors duration-300 ${isActive ? 'text-primary' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
+                                      {getStageName(stage)}
+                                    </span>
                                   </div>
-                                  <span className={`absolute -bottom-8 whitespace-nowrap text-xs md:text-sm font-bold transition-colors duration-300 ${isActive ? 'text-primary' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
-                                    {getStageName(stage)}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -481,7 +483,7 @@ export default function ClientPortal() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 left-6 w-[380px] h-[600px] max-h-[80vh] bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 md:bottom-24 md:left-6 md:right-auto w-full md:w-[380px] h-[85vh] md:h-[600px] max-h-[100vh] md:max-h-[80vh] bg-white dark:bg-gray-800 md:rounded-[2rem] rounded-t-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col z-50 overflow-hidden"
           >
             {/* Chat Header */}
             <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-5 flex justify-between items-center shrink-0">

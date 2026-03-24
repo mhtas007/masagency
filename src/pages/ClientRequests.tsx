@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { addNotification } from '../utils/notifications';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, CheckCircle, Clock, Send, X, User, ShieldCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
@@ -75,14 +76,14 @@ export default function ClientRequests() {
       });
 
       // Send notification to the client
-      await addDoc(collection(db, 'notifications'), {
-        user_id: selectedRequest.user_id,
-        title: 'وەڵام بۆ داواکارییەکەت',
-        message: `وەڵامێکی نوێ هەیە بۆ داواکارییەکەت: ${selectedRequest.subject}`,
-        type: 'client',
-        read: false,
-        created_at: new Date().toISOString()
-      });
+      await addNotification(
+        'وەڵام بۆ داواکارییەکەت',
+        `وەڵامێکی نوێ هەیە بۆ داواکارییەکەت: ${selectedRequest.subject}`,
+        'client',
+        undefined,
+        selectedRequest.user_id,
+        '/'
+      );
 
       setReplyMessage('');
     } catch (error) {
@@ -125,9 +126,9 @@ export default function ClientRequests() {
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">وەڵامدانەوەی پرسیار و داواکارییەکانی کڕیاران</p>
       </div>
 
-      <div className="flex-1 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex">
+      <div className="flex-1 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex relative">
         {/* Left Sidebar - List of Requests */}
-        <div className="w-1/3 border-l border-gray-100 dark:border-gray-700 flex flex-col bg-gray-50/50 dark:bg-gray-800/50">
+        <div className={`w-full md:w-1/3 border-l border-gray-100 dark:border-gray-700 flex flex-col bg-gray-50/50 dark:bg-gray-800/50 ${selectedRequest ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-gray-100 dark:border-gray-700">
             <h2 className="font-bold text-gray-900 dark:text-white">نامەکان ({requests.length})</h2>
           </div>
@@ -172,12 +173,18 @@ export default function ClientRequests() {
         </div>
 
         {/* Right Area - Chat Interface */}
-        <div className="w-2/3 flex flex-col bg-white dark:bg-gray-800 relative">
+        <div className={`w-full md:w-2/3 flex flex-col bg-white dark:bg-gray-800 absolute md:relative inset-0 z-10 md:z-auto transition-transform duration-300 ${selectedRequest ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
           {selectedRequest ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 z-10 shadow-sm">
                 <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setSelectedRequest(null)}
+                    className="md:hidden p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                     <User className="w-5 h-5" />
                   </div>

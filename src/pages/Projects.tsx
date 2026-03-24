@@ -63,13 +63,14 @@ export default function Projects() {
           const usersSnapshot = await getDocs(usersQuery);
           
           usersSnapshot.forEach(async (userDoc) => {
-            await addDoc(collection(db, 'notifications'), {
-              user_id: userDoc.id,
-              title: 'نوێکاری لە پرۆژەکەت',
-              message: `گۆڕانکاری لە پرۆژەی "${formData.project_name}" کرا. قۆناغی ئێستا: ${formData.stage}`,
-              read: false,
-              created_at: new Date().toISOString()
-            });
+            await addNotification(
+              'نوێکاری لە پرۆژەکەت',
+              `گۆڕانکاری لە پرۆژەی "${formData.project_name}" کرا. قۆناغی ئێستا: ${formData.stage}`,
+              'project',
+              undefined,
+              userDoc.id,
+              '/projects'
+            );
           });
         } catch (notifErr) {
           console.error("Error sending notification to client:", notifErr);

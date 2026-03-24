@@ -235,7 +235,11 @@ async function startServer() {
       }
 
       if (targetRole) {
-         usersQuery = usersQuery.where('role', '==', targetRole);
+        if (targetRole === 'Admin') {
+          usersQuery = usersQuery.where('role', 'in', ['Admin', 'Super Admin']);
+        } else {
+          usersQuery = usersQuery.where('role', '==', targetRole);
+        }
       }
       
       const snapshot = await usersQuery.get();
