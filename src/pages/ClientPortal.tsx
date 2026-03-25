@@ -7,11 +7,11 @@ import {
   FileText, Briefcase, Monitor, Share2, Megaphone, Send, 
   ChevronRight, ChevronLeft, ExternalLink, Clock, CheckCircle,
   MessageSquare, Sparkles, User, Zap, ShieldCheck, CreditCard,
-  Phone, Mail, X, Paperclip, CheckCircle2, Circle, Trash2
+  Phone, Mail, X, Paperclip, CheckCircle2, Circle, Trash2, ArrowLeft
 } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { addNotification } from '../utils/notifications';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import ClientOnboarding from '../components/ClientOnboarding';
 
 const QUICK_REPLIES = [
@@ -161,90 +161,147 @@ export default function ClientPortal() {
   return (
     <div className="space-y-8 pb-24 font-sans">
       <ClientOnboarding />
-      {/* 1. Premium Hero Section with Glassmorphism */}
-      <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-primary/90 rounded-[2.5rem] p-8 md:p-12 text-white overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+      {/* 1. Premium Hero Section */}
+      <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
+        {/* Subtle Background Accents */}
+        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50"></div>
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          <div>
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+          <div className="max-w-2xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold mb-6 border border-primary/20"
+            >
+              <Sparkles className="w-4 h-4" />
+              پۆرتاڵی کڕیار
+            </motion.div>
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-bold mb-4 tracking-tight"
+              transition={{ delay: 0.1 }}
+              className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-gray-900 dark:text-white tracking-tight leading-tight"
             >
               بەخێربێیت بۆ پۆرتاڵی تایبەتیت
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-gray-300 text-lg max-w-xl leading-relaxed"
+              transition={{ delay: 0.2 }}
+              className="text-gray-600 dark:text-gray-400 text-base md:text-lg leading-relaxed"
             >
               ئێمە لێرەین بۆ ئەوەی باشترین خزمەتگوزاریت پێشکەش بکەین. چاودێری پرۆژەکانت بکە و لەگەڵمان لە پەیوەندیدا بە بە شێوەیەکی ڕاستەوخۆ و شەفاف.
             </motion.p>
           </div>
 
-          {/* 4. Account Manager Card */}
+          {/* Account Manager Card */}
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="w-full md:w-auto bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl flex items-center gap-5 md:min-w-[300px]"
+            transition={{ delay: 0.3 }}
+            className="w-full lg:w-auto bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 p-5 md:p-6 rounded-3xl flex items-center gap-5 lg:min-w-[320px] shadow-sm hover:shadow-md transition-shadow"
           >
-            <div className="relative">
-              <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="Manager" className="w-16 h-16 rounded-full border-2 border-white/50" />
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-gray-900 rounded-full"></div>
+            <div className="relative shrink-0">
+              <img src="https://ui-avatars.com/api/?name=Admin&background=F27D26&color=fff" alt="Manager" className="w-14 h-14 md:w-16 md:h-16 rounded-full border-2 border-white dark:border-gray-800 shadow-sm" />
+              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 md:w-4 md:h-4 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
             </div>
-            <div>
-              <p className="text-sm text-gray-300 mb-1">بەڕێوەبەری هەژمارەکەت</p>
-              <h3 className="text-xl font-bold text-white">تیمی پاڵپشتی</h3>
-              <div className="flex gap-3 mt-2">
-                <button onClick={() => setIsChatOpen(true)} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><MessageSquare className="w-4 h-4" /></button>
-                <button className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><Phone className="w-4 h-4" /></button>
+            <div className="flex-1">
+              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-0.5 font-medium">بەڕێوەبەری هەژمارەکەت</p>
+              <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">تیمی پاڵپشتی</h3>
+              <div className="flex gap-2 mt-2.5">
+                <button onClick={() => setIsChatOpen(true)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl transition-colors text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                  <MessageSquare className="w-4 h-4" />
+                  نامە
+                </button>
+                <button className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl transition-colors text-gray-700 dark:text-gray-300 shadow-sm">
+                  <Phone className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </motion.div>
         </div>
       </div>
 
+      {/* 2. Latest Works - Prominent Top Section */}
+      {companyUpdates.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="w-7 h-7 text-yellow-500" />
+              نوێترین کارەکانمان
+            </h2>
+            <Link to="/company-updates" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors flex items-center gap-1">
+              بینینی هەمووی
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {companyUpdates.slice(0, 3).map((update, index) => (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                key={update.id} 
+                className="group cursor-pointer bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 dark:border-gray-700 hover:-translate-y-1"
+              >
+                <div className="relative h-64 overflow-hidden">
+                  <img 
+                    src={update.image_url} 
+                    alt={update.title} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300"></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full mb-3 border border-white/20 shadow-sm">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {new Date(update.created_at).toLocaleDateString('en-GB')}
+                    </span>
+                    <h3 className="font-bold text-white text-xl leading-tight line-clamp-1 drop-shadow-lg mb-2">{update.title}</h3>
+                    <p className="text-sm text-gray-300 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">{update.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column (2/3) */}
         <div className="lg:col-span-2 space-y-8">
           
           {/* 5. Financial Summary & Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 rounded-3xl shadow-lg shadow-emerald-500/20 text-white relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/20">
-                  <CreditCard className="w-6 h-6 text-white" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <motion.div whileHover={{ y: -4 }} className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                  <CreditCard className="w-6 h-6" />
                 </div>
-                <p className="text-emerald-50 text-sm font-medium mb-1">کۆی پارەی دراو</p>
-                <h3 className="text-3xl font-bold">${totalPaid.toLocaleString()}</h3>
               </div>
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">کۆی پارەی دراو</p>
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white" dir="ltr">${totalPaid.toLocaleString()}</h3>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-rose-500 to-rose-600 p-6 rounded-3xl shadow-lg shadow-rose-500/20 text-white relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/20">
-                  <Clock className="w-6 h-6 text-white" />
+            <motion.div whileHover={{ y: -4 }} className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
+                  <Clock className="w-6 h-6" />
                 </div>
-                <p className="text-rose-50 text-sm font-medium mb-1">بڕی ماوە (قەرز)</p>
-                <h3 className="text-3xl font-bold">${totalUnpaid.toLocaleString()}</h3>
               </div>
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">بڕی ماوە (قەرز)</p>
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white" dir="ltr">${totalUnpaid.toLocaleString()}</h3>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-3xl shadow-lg shadow-blue-500/20 text-white relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/20">
-                  <Briefcase className="w-6 h-6 text-white" />
+            <motion.div whileHover={{ y: -4 }} className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                  <Briefcase className="w-6 h-6" />
                 </div>
-                <p className="text-blue-50 text-sm font-medium mb-1">پرۆژە چالاکەکان</p>
-                <h3 className="text-3xl font-bold">{projects.filter(p => p.status !== 'Completed').length}</h3>
               </div>
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">پرۆژە چالاکەکان</p>
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{projects.filter(p => p.status !== 'Completed').length}</h3>
             </motion.div>
           </div>
 
@@ -309,8 +366,9 @@ export default function ClientPortal() {
                         </div>
 
                         {/* Timeline Steps */}
-                        <div className="relative pt-4 pb-8 overflow-x-auto hide-scrollbar">
-                          <div className="min-w-[500px] relative">
+                        <div className="relative pt-6 pb-4 md:pb-8">
+                          {/* Desktop Horizontal Timeline */}
+                          <div className="hidden md:block relative">
                             {/* Track */}
                             <div className="absolute top-1/2 right-0 w-full h-1.5 bg-gray-100 dark:bg-gray-700 -translate-y-1/2 rounded-full overflow-hidden">
                               <div 
@@ -329,13 +387,40 @@ export default function ClientPortal() {
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center z-10 transition-all duration-500 border-4 border-white dark:border-gray-800 shadow-sm ${isCompleted ? 'bg-primary text-white scale-110' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
                                       {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-4 h-4" />}
                                     </div>
-                                    <span className={`absolute -bottom-8 whitespace-nowrap text-xs md:text-sm font-bold transition-colors duration-300 ${isActive ? 'text-primary' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
+                                    <span className={`absolute -bottom-8 whitespace-nowrap text-sm font-bold transition-colors duration-300 ${isActive ? 'text-primary' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
                                       {getStageName(stage)}
                                     </span>
                                   </div>
                                 );
                               })}
                             </div>
+                          </div>
+
+                          {/* Mobile Vertical Timeline */}
+                          <div className="md:hidden relative border-r-2 border-gray-100 dark:border-gray-700 pr-6 space-y-6">
+                            {/* Active Track */}
+                            <div 
+                              className="absolute top-0 right-[-2px] w-0.5 bg-primary transition-all duration-1000 ease-out"
+                              style={{ height: `${progressPercentage}%` }}
+                            ></div>
+
+                            {PROJECT_STAGES.map((stage, index) => {
+                              const isCompleted = index <= currentStageIndex;
+                              const isActive = index === currentStageIndex;
+                              
+                              return (
+                                <div key={stage} className="relative">
+                                  <div className={`absolute top-1/2 -right-[35px] -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center z-10 transition-all duration-500 border-4 border-white dark:border-gray-800 shadow-sm ${isCompleted ? 'bg-primary text-white scale-110' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                                    {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-3 h-3" />}
+                                  </div>
+                                  <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border ${isActive ? 'border-primary/30 shadow-sm' : 'border-gray-100 dark:border-gray-700'}`}>
+                                    <span className={`text-sm font-bold transition-colors duration-300 ${isActive ? 'text-primary' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>
+                                      {getStageName(stage)}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -401,56 +486,6 @@ export default function ClientPortal() {
         {/* Right Column (1/3) */}
         <div className="space-y-8">
           
-          {/* 1. Latest Works Feed (نوێترین کارەکان) */}
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-yellow-500" />
-                نوێترین کارەکانمان
-              </h2>
-              <Link to="/company-updates" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
-                بینینی هەمووی
-              </Link>
-            </div>
-            
-            <div className="space-y-6">
-              {companyUpdates.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                  <Monitor className="w-12 h-12 mb-3 opacity-20" />
-                  <p className="text-sm">هیچ نوێکردنەوەیەک نییە</p>
-                </div>
-              ) : (
-                companyUpdates.slice(0, 3).map((update, index) => (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    key={update.id} 
-                    className="group cursor-pointer block bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-3 hover:bg-white dark:hover:bg-gray-800 hover:shadow-lg transition-all duration-300 border border-transparent hover:border-gray-100 dark:hover:border-gray-700"
-                  >
-                    <div className="relative h-48 rounded-xl overflow-hidden mb-4 shadow-sm">
-                      <img 
-                        src={update.image_url} 
-                        alt={update.title} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-300"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 backdrop-blur-md text-white text-[10px] font-bold rounded-full mb-2 border border-white/20 shadow-sm">
-                          <Sparkles className="w-3 h-3" />
-                          {new Date(update.created_at).toLocaleDateString('en-GB')}
-                        </span>
-                        <h3 className="font-bold text-white text-lg leading-tight line-clamp-1 drop-shadow-lg">{update.title}</h3>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed px-2 pb-1">{update.description}</p>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </div>
-
           {/* 9. Quick Actions Menu */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
@@ -458,15 +493,15 @@ export default function ClientPortal() {
               کردارە خێراکان
             </h2>
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setIsChatOpen(true)} className="flex flex-col items-center justify-center p-5 bg-gray-50 dark:bg-gray-800/50 hover:bg-primary/5 hover:text-primary border border-gray-100 dark:border-gray-700 rounded-2xl transition-all group hover:shadow-md hover:-translate-y-1">
-                <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center mb-3 shadow-sm group-hover:bg-primary/10 transition-colors">
-                  <MessageSquare className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+              <button onClick={() => setIsChatOpen(true)} className="flex flex-col items-center justify-center p-5 bg-white dark:bg-gray-800 hover:bg-primary/5 hover:border-primary/30 border border-gray-100 dark:border-gray-700 rounded-2xl transition-all group hover:shadow-md hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center mb-3 shadow-sm group-hover:bg-primary/10 group-hover:scale-110 transition-all">
+                  <MessageSquare className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary transition-colors" />
                 </div>
                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-primary transition-colors">داواکاری نوێ</span>
               </button>
-              <Link to="/invoices" className="flex flex-col items-center justify-center p-5 bg-gray-50 dark:bg-gray-800/50 hover:bg-primary/5 hover:text-primary border border-gray-100 dark:border-gray-700 rounded-2xl transition-all group hover:shadow-md hover:-translate-y-1">
-                <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center mb-3 shadow-sm group-hover:bg-primary/10 transition-colors">
-                  <FileText className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+              <Link to="/invoices" className="flex flex-col items-center justify-center p-5 bg-white dark:bg-gray-800 hover:bg-primary/5 hover:border-primary/30 border border-gray-100 dark:border-gray-700 rounded-2xl transition-all group hover:shadow-md hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center mb-3 shadow-sm group-hover:bg-primary/10 group-hover:scale-110 transition-all">
+                  <FileText className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary transition-colors" />
                 </div>
                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-primary transition-colors">بینینی فاتورەکان</span>
               </Link>
@@ -483,26 +518,26 @@ export default function ClientPortal() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-0 left-0 right-0 md:bottom-24 md:left-6 md:right-auto w-full md:w-[380px] h-[85vh] md:h-[600px] max-h-[100vh] md:max-h-[80vh] bg-white dark:bg-gray-800 md:rounded-[2rem] rounded-t-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 md:bottom-24 md:left-6 md:right-auto w-full md:w-[400px] h-[85vh] md:h-[650px] max-h-[100vh] md:max-h-[85vh] bg-white dark:bg-gray-800 md:rounded-[2rem] rounded-t-[2rem] shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col z-50 overflow-hidden"
           >
             {/* Chat Header */}
-            <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-5 flex justify-between items-center shrink-0">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-4 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-white" />
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <ShieldCheck className="w-6 h-6 text-primary" />
                   </div>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-gray-900 rounded-full animate-pulse"></div>
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full animate-pulse"></div>
                 </div>
                 <div>
-                  <h3 className="font-bold text-white">تیمی پاڵپشتی MAS</h3>
-                  <p className="text-xs text-gray-300 flex items-center gap-1">
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg">تیمی پاڵپشتی MAS</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    ئۆنلاین
+                    ئێستا ئۆنلاینین
                   </p>
                 </div>
               </div>
-              <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-white/10 text-white rounded-full transition-colors">
+              <button onClick={() => setIsChatOpen(false)} className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -580,10 +615,10 @@ export default function ClientPortal() {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white dark:bg-gray-800 shrink-0 border-t border-gray-100 dark:border-gray-700">
+            <div className="p-4 bg-white dark:bg-gray-800 shrink-0 border-t border-gray-100 dark:border-gray-700 pb-safe">
               <form 
                 onSubmit={(e) => { e.preventDefault(); handleSendRequest(chatMessage); }}
-                className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+                className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-sm"
               >
                 <button type="button" className="p-2.5 text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors rounded-xl">
                   <Paperclip className="w-5 h-5" />
@@ -593,13 +628,13 @@ export default function ClientPortal() {
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
                   placeholder="نامەکەت لێرە بنووسە..."
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-white px-2 placeholder-gray-400"
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm md:text-base text-gray-900 dark:text-white px-2 placeholder-gray-400"
                   disabled={isSubmitting}
                 />
                 <button 
                   type="submit" 
                   disabled={!chatMessage.trim() || isSubmitting}
-                  className="p-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="p-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
                 >
                   <Send className="w-5 h-5 rtl:rotate-180" />
                 </button>

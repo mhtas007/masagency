@@ -4,7 +4,7 @@ import { getToken } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { messaging, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 export function NotificationPermission() {
   const [showPopup, setShowPopup] = useState(false);

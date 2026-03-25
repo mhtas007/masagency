@@ -45,6 +45,23 @@ export default function CompanyUpdates() {
           updated_at: new Date().toISOString()
         });
         addNotification('سەرکەوتوو بوو', 'نوێکردنەوەیەکی نوێ زیادکرا', 'success');
+        
+        // Notify all users about the new update
+        try {
+          const usersSnapshot = await getDocs(collection(db, 'users'));
+          usersSnapshot.forEach(async (userDoc) => {
+            await addNotification(
+              'نوێترین کارەکانمان',
+              `کارێکی نوێمان بڵاوکردەوە: ${formData.title}`,
+              'info',
+              undefined,
+              userDoc.id,
+              '/'
+            );
+          });
+        } catch (notifErr) {
+          console.error("Error sending notification to users:", notifErr);
+        }
       }
       setIsModalOpen(false);
       setFormData({ title: '', description: '', image_url: '' });
@@ -102,38 +119,39 @@ export default function CompanyUpdates() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {updates.map(update => (
-          <div key={update.id} className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-            <div className="relative h-56 overflow-hidden">
+          <div key={update.id} className="group cursor-pointer bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 dark:border-gray-700 hover:-translate-y-1">
+            <div className="relative h-64 overflow-hidden">
               <img 
                 src={update.image_url} 
                 alt={update.title} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
-              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300"></div>
+              
+              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0 z-20">
                 <button
-                  onClick={() => handleEdit(update)}
-                  className="p-2.5 bg-white/90 dark:bg-gray-800/90 rounded-xl text-blue-600 hover:bg-white dark:hover:bg-gray-700 transition-colors shadow-lg backdrop-blur-md"
+                  onClick={(e) => { e.stopPropagation(); handleEdit(update); }}
+                  className="p-2.5 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-xl text-white transition-colors shadow-lg border border-white/20"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDelete(update.id)}
-                  className="p-2.5 bg-white/90 dark:bg-gray-800/90 rounded-xl text-red-600 hover:bg-white dark:hover:bg-gray-700 transition-colors shadow-lg backdrop-blur-md"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(update.id); }}
+                  className="p-2.5 bg-red-500/80 hover:bg-red-500 backdrop-blur-md rounded-xl text-white transition-colors shadow-lg border border-red-500/50"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="absolute bottom-3 left-3">
-                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full border border-white/20 shadow-sm">
+
+              <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full mb-3 border border-white/20 shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5" />
                   {new Date(update.created_at).toLocaleDateString('en-GB')}
                 </span>
+                <h3 className="font-bold text-white text-xl leading-tight line-clamp-1 drop-shadow-lg mb-2">{update.title}</h3>
+                <p className="text-sm text-gray-300 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">{update.description}</p>
               </div>
-            </div>
-            <div className="p-6">
-              <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-3 line-clamp-1">{update.title}</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-3 leading-relaxed">{update.description}</p>
             </div>
           </div>
         ))}

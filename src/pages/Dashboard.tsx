@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, Briefcase, DollarSign, TrendingUp } from 'lucide-react';
+import { Users, Briefcase, DollarSign, TrendingUp, Sparkles, ArrowLeft } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,6 +19,7 @@ export default function Dashboard() {
   });
   const [invoices, setInvoices] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [companyUpdates, setCompanyUpdates] = useState<any[]>([]);
 
   useEffect(() => {
     if (role === 'Client') return;
@@ -56,11 +59,18 @@ export default function Dashboard() {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
 
+    const unsubUpdates = onSnapshot(query(collection(db, 'company_updates'), orderBy('created_at', 'desc')), (snapshot) => {
+      setCompanyUpdates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'company_updates');
+    });
+
     return () => { 
       unsubClients(); 
       unsubProjects(); 
       unsubInvoices(); 
       unsubTransactions(); 
+      unsubUpdates();
     };
   }, [role]);
 
@@ -133,6 +143,52 @@ export default function Dashboard() {
           <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.clients}</p>
         </div>
       </div>
+
+      {/* Latest Works - Prominent Top Section */}
+      {companyUpdates.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="w-7 h-7 text-yellow-500" />
+              نوێترین کارەکانمان
+            </h2>
+            <Link to="/company-updates" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors flex items-center gap-1">
+              بینینی هەمووی
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {companyUpdates.slice(0, 3).map((update, index) => (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                key={update.id} 
+                className="group cursor-pointer bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 dark:border-gray-700 hover:-translate-y-1"
+              >
+                <div className="relative h-64 overflow-hidden">
+                  <img 
+                    src={update.image_url} 
+                    alt={update.title} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300"></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full mb-3 border border-white/20 shadow-sm">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {new Date(update.created_at).toLocaleDateString('en-GB')}
+                    </span>
+                    <h3 className="font-bold text-white text-xl leading-tight line-clamp-1 drop-shadow-lg mb-2">{update.title}</h3>
+                    <p className="text-sm text-gray-300 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">{update.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">ئاستی داهاتی مانگانە (USD)</h3>

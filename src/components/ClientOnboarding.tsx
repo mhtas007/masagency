@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, CheckCircle2, Monitor, Briefcase, Send, CreditCard, Sparkles, X } from 'lucide-react';
 
 const SLIDES = [
